@@ -6,7 +6,7 @@ Built for [The Synthesis Hackathon](https://synthesis.md) (March 2026) -- Track:
 
 ## The Problem
 
-I'm a freelancer on Fiverr. I build automations for clients using tools like GoHighLevel, Manychat, and HubSpot. My reputation -- my reviews, my ratings, my track record -- is everything. It's how I get new clients. It's how I charge more over time.
+I'm a freelancer on Fiverr. I build automations for clients using tools like GoHighLevel, Manychat, HubSpot, n8n, and Make. My reputation -- my reviews, my ratings, my track record -- is everything. It's how I get new clients. It's how I charge more over time.
 
 But here's the thing: **my reputation is locked to Fiverr.** If Fiverr bans my account, shuts down, or changes their algorithm, my entire track record vanishes overnight. Years of work, gone. I don't own my reputation -- Fiverr does.
 

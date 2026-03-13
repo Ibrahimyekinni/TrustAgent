@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "description": "On-chain freelancer reputation system using attestations on Base",
   "scripts": {
+    "agent": "node agent/trustAgent.js",
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "register-schema": "node scripts/registerSchema.js",
     "deploy:sepolia": "hardhat run scripts/deploy.js --network baseSepolia"
   },
   "license": "MIT",
@@ -13,6 +15,8 @@
     "hardhat": "^2.22.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.0"
+    "@ethereum-attestation-service/eas-sdk": "^2.9.0",
+    "dotenv": "^16.4.0",
+    "ethers": "^6.16.0"
   }
 }

@@ -15,6 +15,8 @@
  * COMMANDS:
  *   review <address> <project> <rating> <review>  -- Create an attestation
  *   check <attestationUID>                         -- Read a single attestation
+ *   reputation <address>                           -- See ALL reviews for a freelancer
+ *   revoke <attestationUID>                        -- Revoke a review you created
  *   help                                           -- Show available commands
  *   exit                                           -- Quit the agent
  *
@@ -32,6 +34,11 @@ const EAS_CONTRACT_ADDRESS = "0x4200000000000000000000000000000000000021";
 
 // Our schema -- the "review form" fields
 const SCHEMA_STRING = "address freelancer, string projectName, uint8 rating, string review";
+
+// EAS GraphQL API -- this is a search engine for attestations.
+// Instead of looking up one attestation at a time by UID, we can search
+// for ALL attestations that match certain criteria (like "all reviews for this freelancer").
+const EAS_GRAPHQL_URL = "https://base-sepolia.easscan.org/graphql";
 
 // Global variables for the agent's blockchain connection
 let eas;
@@ -180,6 +187,209 @@ async function checkReview(attestationUID) {
 }
 
 /**
+ * Look up ALL reviews for a freelancer by their wallet address.
+ *
+ * This is the "Fiverr profile page" equivalent -- instead of checking one
+ * review at a time, this shows EVERY review a freelancer has received,
+ * plus their average rating.
+ *
+ * HOW IT WORKS:
+ * 1. We send a GraphQL query to the EAS indexer (a search engine for attestations)
+ * 2. The query says: "Give me all attestations where the recipient is this address
+ *    AND the schema matches our review schema"
+ * 3. We decode each attestation's data and display it
+ * 4. We calculate the average rating across all reviews
+ *
+ * WHY GRAPHQL?
+ * The EAS smart contract on-chain doesn't support searching -- you can only
+ * look up one attestation if you already know its UID. The EAS team runs a
+ * separate indexer service that watches the blockchain and builds a searchable
+ * database. GraphQL is the language we use to query that database.
+ */
+async function getReputation(freelancerAddress) {
+  if (!ethers.isAddress(freelancerAddress)) {
+    console.log("  Invalid wallet address: " + freelancerAddress);
+    console.log("  Wallet addresses start with 0x and are 42 characters long.");
+    return;
+  }
+
+  console.log("");
+  console.log("  Searching for all reviews for " + freelancerAddress.slice(0, 10) + "...");
+
+  // This is a GraphQL query -- it's like a very specific search request.
+  // We're asking: "Find all attestations where:
+  //   - the schema matches our review schema (SCHEMA_UID)
+  //   - the recipient is this freelancer's address
+  //   - order them newest first"
+  const query = `
+    query GetAttestations($where: AttestationWhereInput) {
+      attestations(where: $where, orderBy: [{ time: desc }]) {
+        id
+        attester
+        recipient
+        time
+        revocationTime
+        data
+      }
+    }
+  `;
+
+  const variables = {
+    where: {
+      schemaId: { equals: process.env.SCHEMA_UID },
+      recipient: { equals: freelancerAddress },
+    },
+  };
+
+  // Send the search request to the EAS GraphQL API
+  const response = await fetch(EAS_GRAPHQL_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const result = await response.json();
+
+  if (result.errors) {
+    console.log("  Error querying EAS: " + result.errors[0].message);
+    return;
+  }
+
+  const attestations = result.data.attestations;
+
+  if (attestations.length === 0) {
+    console.log("");
+    console.log("  No reviews found for this address.");
+    console.log("  Either this freelancer hasn't been reviewed yet,");
+    console.log("  or the address is wrong.");
+    console.log("");
+    return;
+  }
+
+  // Decode each attestation and collect the data
+  const schemaEncoder = new SchemaEncoder(SCHEMA_STRING);
+  const reviews = [];
+  let totalRating = 0;
+  let activeCount = 0;
+
+  for (const att of attestations) {
+    const decoded = schemaEncoder.decodeData(att.data);
+    const rating = Number(decoded[2].value.value);
+    const isRevoked = Number(att.revocationTime) > 0;
+
+    reviews.push({
+      projectName: decoded[1].value.value,
+      rating: rating,
+      reviewText: decoded[3].value.value,
+      reviewer: att.attester,
+      date: new Date(Number(att.time) * 1000).toLocaleDateString(),
+      revoked: isRevoked,
+      uid: att.id,
+    });
+
+    // Only count non-revoked reviews in the average
+    if (!isRevoked) {
+      totalRating += rating;
+      activeCount++;
+    }
+  }
+
+  const avgRating = activeCount > 0 ? (totalRating / activeCount).toFixed(1) : "N/A";
+  const avgStars = activeCount > 0 ? Math.round(totalRating / activeCount) : 0;
+
+  // Display the reputation summary
+  console.log("");
+  console.log("  ╔═══ Reputation Report ═══════════════════");
+  console.log("  ║");
+  console.log("  ║  Freelancer:  " + freelancerAddress);
+  console.log("  ║  Reviews:     " + activeCount + " active" + (reviews.length > activeCount ? ", " + (reviews.length - activeCount) + " revoked" : ""));
+  console.log("  ║  Avg Rating:  " + "★".repeat(avgStars) + "☆".repeat(5 - avgStars) + " (" + avgRating + "/5)");
+  console.log("  ║");
+  console.log("  ╠═══ Individual Reviews ══════════════════");
+
+  for (let i = 0; i < reviews.length; i++) {
+    const r = reviews[i];
+    const status = r.revoked ? " [REVOKED]" : "";
+    console.log("  ║");
+    console.log("  ║  " + (i + 1) + ". " + r.projectName + status);
+    console.log("  ║     " + "★".repeat(r.rating) + "☆".repeat(5 - r.rating) + " (" + r.rating + "/5)");
+    console.log("  ║     \"" + r.reviewText + "\"");
+    console.log("  ║     By: " + r.reviewer.slice(0, 10) + "...  |  " + r.date);
+  }
+
+  console.log("  ║");
+  console.log("  ╚════════════════════════════════════════════");
+  console.log("");
+}
+
+/**
+ * Revoke a review that YOU created.
+ *
+ * WHAT THIS DOES:
+ * Marks an attestation as "revoked" on-chain. The data stays on the blockchain
+ * (nothing can be deleted), but it gets flagged as revoked. Our reputation
+ * command filters revoked reviews out of the average rating.
+ *
+ * WHO CAN REVOKE:
+ * Only the original attester (the person who created the review) can revoke it.
+ * EAS enforces this at the smart contract level -- if someone else tries to
+ * revoke your review, the transaction will fail.
+ *
+ * WHY THIS MATTERS:
+ * - Client changed their mind about a review
+ * - Review was posted by mistake
+ * - Dispute was resolved and the bad review should no longer count
+ *
+ * NOTE: This costs gas (ETH) because it's a write operation on the blockchain.
+ */
+async function revokeReview(attestationUID) {
+  console.log("");
+  console.log("  Revoking attestation: " + attestationUID.slice(0, 10) + "...");
+  console.log("");
+
+  // First, fetch the attestation to confirm it exists and show what we're revoking
+  const attestation = await eas.getAttestation(attestationUID);
+
+  // Check if it's already revoked
+  if (Number(attestation.revocationTime) > 0) {
+    console.log("  This review has already been revoked.");
+    console.log("");
+    return;
+  }
+
+  // Check if the current wallet is the one that created this review
+  if (attestation.attester.toLowerCase() !== signer.address.toLowerCase()) {
+    console.log("  You can only revoke reviews that YOU created.");
+    console.log("  This review was created by: " + attestation.attester);
+    console.log("  Your wallet is:             " + signer.address);
+    console.log("");
+    return;
+  }
+
+  // Decode and show what's being revoked
+  const schemaEncoder = new SchemaEncoder(SCHEMA_STRING);
+  const decoded = schemaEncoder.decodeData(attestation.data);
+  const projectName = decoded[1].value.value;
+  const rating = Number(decoded[2].value.value);
+
+  console.log("  Revoking review for: " + projectName + " (" + rating + "/5)");
+  console.log("  Sending revocation transaction...");
+
+  const transaction = await eas.revoke({
+    schema: process.env.SCHEMA_UID,
+    data: { uid: attestationUID },
+  });
+
+  await transaction.wait();
+
+  console.log("");
+  console.log("  Review revoked successfully!");
+  console.log("  The review data stays on-chain but is now marked as revoked.");
+  console.log("  It will no longer count toward the freelancer's average rating.");
+  console.log("");
+}
+
+/**
  * Show help text -- lists all available commands.
  */
 function showHelp() {
@@ -190,9 +400,17 @@ function showHelp() {
   console.log("    Create an on-chain review for a freelancer.");
   console.log('    Example: review 0x1234...abcd "Logo Design" 5 "Fast delivery, loved it"');
   console.log("");
+  console.log("  reputation <address>");
+  console.log("    See ALL reviews and average rating for a freelancer.");
+  console.log("    Example: reputation 0x1234...abcd");
+  console.log("");
   console.log("  check <attestationUID>");
-  console.log("    Look up a review by its attestation ID.");
+  console.log("    Look up a single review by its attestation ID.");
   console.log("    Example: check 0xabc123...");
+  console.log("");
+  console.log("  revoke <attestationUID>");
+  console.log("    Revoke a review you created (only works on your own reviews).");
+  console.log("    Example: revoke 0xabc123...");
   console.log("");
   console.log("  help");
   console.log("    Show this help message.");
@@ -284,6 +502,24 @@ async function main() {
               console.log("  Usage: check <attestationUID>");
             } else {
               await checkReview(parts[1]);
+            }
+            break;
+
+          case "reputation":
+          case "rep":
+            if (parts.length < 2) {
+              console.log("  Usage: reputation <freelancerAddress>");
+              console.log("  Example: reputation 0x1234...abcd");
+            } else {
+              await getReputation(parts[1]);
+            }
+            break;
+
+          case "revoke":
+            if (parts.length < 2) {
+              console.log("  Usage: revoke <attestationUID>");
+            } else {
+              await revokeReview(parts[1]);
             }
             break;
 

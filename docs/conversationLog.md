@@ -82,3 +82,33 @@ Process documentation of human-agent collaboration for TrustAgent.
 - Agent handled all code: CLI enhancements, frontend HTML/CSS/JS, GraphQL integration, ABI decoding, README rewrite
 - Key design tension: glassmorphism effects were invisible against similar-colored dark backgrounds. Solved by switching to high-contrast black + neon green palette where glass panels pop
 - yungmaster reviewed Telegram group chats about ERC-8004 identity NFT ownership -- agent analyzed the screenshots and confirmed no immediate action needed (Devfolio holds NFTs custodially, transfer flow coming before submissions)
+
+## March 14, 2026 -- Day 2 Build (continued)
+
+### Key Decisions
+- **Restructure frontend from single-page to 3-page React app.** yungmaster identified that having reputation search and review submission on the same page didn't make sense. Decision: dedicated Home, Search, and Review pages with React Router.
+- **Use React + Vite** instead of keeping the vanilla HTML/CSS/JS frontend. React gives proper component architecture and routing. Vite is the build tool (fast, modern, lightweight).
+- **"Connect Wallet" not "Connect MetaMask"** -- yungmaster pointed out that not everyone uses MetaMask. Button text and error messages updated to be wallet-agnostic.
+- **Mercury dropped from team.** Teammate Mercury stopped participating. yungmaster is now building solo with Claude Code as AI agent. All references to Mercury removed from docs and README.
+
+### What We Built
+
+#### React Frontend Migration
+1. **3-page SPA architecture** -- Home (landing/marketing), Search (reputation lookup), Review (wallet-connected review submission). Shared Layout component with Navbar and Footer.
+2. **Component library** -- Layout, Navbar, Footer, Stars (display), StarSelector (interactive picker), ReviewCard, Spinner. All reusable across pages.
+3. **Wallet integration in browser** -- Review page connects to MetaMask/Coinbase Wallet, switches to Base Sepolia automatically, submits attestations directly from browser via ethers.js. No backend needed.
+4. **Utility modules** -- `eas.js` (constants, GraphQL fetcher, manual ABI decoder) and `wallet.js` (wallet connection, chain switching). Shared between components.
+5. **Full design system port** -- 1600+ lines of CSS ported from vanilla version into React. Added navbar styles, home page sections (hero, problem, how-it-works, tech stack), responsive breakpoints for all new components.
+6. **Both CTA buttons styled identically** -- yungmaster wanted "Search a Freelancer" and "Leave a Review" to have the same neon primary style on the home page.
+
+#### Cleanup
+7. **Legacy frontend backed up** to `frontend-legacy/` (gitignored)
+8. **Boilerplate removed** -- Vite README, dead CSS, unused exports
+9. **README updated** -- Architecture diagram, frontend description, team section, tech stack all updated to reflect React migration and solo team
+
+### Human-Agent Collaboration Notes
+- yungmaster drove the architectural decision to split into 3 pages -- identified the UX problem (search + review on same page doesn't make sense)
+- Agent handled full React migration: scaffolding, component extraction, CSS port, routing, wallet integration
+- yungmaster caught the "Connect MetaMask" copy issue -- insisted on wallet-agnostic language
+- yungmaster made the call to remove Mercury and go solo when teammate stopped contributing
+- Design iteration continued: both CTA buttons matched to primary neon style per yungmaster's direction

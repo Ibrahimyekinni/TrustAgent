@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { connectWallet } from "../utils/wallet";
-import { isValidAddress, EAS_CONTRACT_ADDRESS, EAS_ABI, SCHEMA_UID_V2 } from "../utils/eas";
+import { isValidAddress, EAS_CONTRACT_ADDRESS, EAS_ABI, SCHEMA_UID_V2, EAS_GRAPHQL_URL, SCHEMA_UID_V1, decodeAttestationData } from "../utils/eas";
 import StarSelector from "../components/StarSelector";
+import ReviewCard from "../components/ReviewCard";
 import Spinner from "../components/Spinner";
 
 export default function Review() {
@@ -17,6 +18,8 @@ export default function Review() {
   const [txState, setTxState] = useState("idle"); // idle | pending | success | error
   const [txMessage, setTxMessage] = useState("");
   const [txResult, setTxResult] = useState(null); // { attestationUID, txHash }
+  const [myReviews, setMyReviews] = useState([]); // Reviews submitted by this wallet
+  const [loadingMyReviews, setLoadingMyReviews] = useState(false);
 
   // Listen for MetaMask account/chain changes
   useEffect(() => {
@@ -43,10 +46,56 @@ export default function Review() {
     };
   }, []);
 
+  async function fetchMyReviews(walletAddress) {
+    setLoadingMyReviews(true);
+    try {
+      const query = `
+        query GetAttestations($where: AttestationWhereInput) {
+          attestations(where: $where, orderBy: [{ time: desc }]) {
+            id attester recipient time revocationTime schemaId data
+          }
+        }
+      `;
+      const [v1Res, v2Res] = await Promise.all([
+        fetch(EAS_GRAPHQL_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, variables: { where: { schemaId: { equals: SCHEMA_UID_V1 }, attester: { equals: walletAddress } } } }),
+        }),
+        fetch(EAS_GRAPHQL_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, variables: { where: { schemaId: { equals: SCHEMA_UID_V2 }, attester: { equals: walletAddress } } } }),
+        }),
+      ]);
+      const [v1, v2] = await Promise.all([v1Res.json(), v2Res.json()]);
+      const all = [...(v1.data?.attestations || []), ...(v2.data?.attestations || [])].sort((a, b) => parseInt(b.time) - parseInt(a.time));
+
+      const reviews = all.map((att) => {
+        const decoded = decodeAttestationData(att.data, att.schemaId);
+        return {
+          projectName: decoded.projectName,
+          rating: decoded.rating,
+          reviewText: decoded.review,
+          proofURI: decoded.proofURI || "",
+          reviewer: att.attester,
+          date: new Date(parseInt(att.time) * 1000).toLocaleDateString(),
+          revoked: parseInt(att.revocationTime) > 0,
+          uid: att.id,
+        };
+      });
+      setMyReviews(reviews);
+    } catch {
+      // Silently fail -- this is a nice-to-have, not critical
+    }
+    setLoadingMyReviews(false);
+  }
+
   async function handleConnect() {
     try {
       const { address, signer } = await connectWallet();
       setWallet({ address, signer });
+      fetchMyReviews(address);
     } catch (err) {
       alert(err.message || "Failed to connect wallet");
     }
@@ -122,8 +171,9 @@ export default function Review() {
       setTxResult({ attestationUID, txHash: receipt.hash, projectName, rating });
       setTxState("success");
 
-      // Reset form
+      // Reset form and refresh submitted reviews
       setForm({ freelancerAddress: "", projectName: "", rating: 0, reviewText: "", proofURI: "" });
+      if (wallet.address) fetchMyReviews(wallet.address);
     } catch (err) {
       setTxState("error");
       if (err.code === "ACTION_REJECTED" || err.code === 4001) {
@@ -269,6 +319,19 @@ export default function Review() {
               </a>
             )}
           </div>
+        )}
+
+        {/* Reviews submitted by this wallet */}
+        {isConnected && myReviews.length > 0 && (
+          <div className="my-reviews-section">
+            <h3>Reviews You've Submitted ({myReviews.length})</h3>
+            {myReviews.map((review) => (
+              <ReviewCard key={review.uid} review={review} />
+            ))}
+          </div>
+        )}
+        {isConnected && loadingMyReviews && (
+          <Spinner message="Loading your past reviews..." />
         )}
       </section>
     </div>

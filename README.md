@@ -2,6 +2,8 @@
 
 On-chain freelancer reputation system using attestations on Base.
 
+**Live demo:** [trustagent-app.vercel.app](https://trustagent-app.vercel.app)
+
 Built for [The Synthesis Hackathon](https://synthesis.md) (March 2026) -- Track: Agents that Trust.
 
 ## The Problem
@@ -46,6 +48,7 @@ An interactive command-line agent that handles all blockchain complexity behind 
 | `help` | Show available commands |
 
 Key behaviors:
+- **Claude-powered NLP** -- When an Anthropic API key is set, the agent uses Claude to understand truly freeform input. Falls back to regex pattern matching without the key
 - **Revocation-aware scoring** -- Revoked reviews are visible (transparency) but excluded from the average rating
 - **Ownership checks** -- Before revoking, the agent verifies your wallet matches the original attester. EAS enforces this at the smart contract level too, but we check client-side first for a clear error message instead of a confusing blockchain error
 - **Input validation** -- Validates wallet addresses, rating bounds (1-5), and attestation UIDs before sending transactions
@@ -82,15 +85,15 @@ A React + Vite web app with 3 dedicated pages (Home, Search, Review) and a neon 
               │                                 │
      ┌────────┴────────┐              ┌─────────┴────────┐
      │   CLI Agent      │              │   Web Frontend    │
-     │                  │              │                  │
-     │  Write reviews   │              │  Read reviews    │
-     │  Read reviews    │              │  (browser-only,  │
-     │  Revoke reviews  │              │   no backend)    │
-     │  (needs wallet)  │              │                  │
-     └─────────────────┘              └──────────────────┘
+     │                  │              │   (React + Vite)  │
+     │  Write reviews   │              │  Read reviews     │
+     │  Read reviews    │              │  Write reviews    │
+     │  Revoke reviews  │              │  (browser wallet) │
+     │  (private key)   │              │                   │
+     └─────────────────┘              └───────────────────┘
 ```
 
-The CLI agent needs a wallet (private key) because it writes to the blockchain. The frontend connects to the user's browser wallet for submitting reviews, and reads directly from the EAS GraphQL API for lookups.
+Both the CLI agent and the web frontend can read and write reviews. The CLI uses a private key from `.env` for server-side signing. The frontend connects to the user's browser wallet (MetaMask, Coinbase Wallet, etc.) for client-side signing. Both talk to the same EAS contracts and GraphQL indexer on Base Sepolia.
 
 ## On-Chain Artifacts
 
@@ -136,6 +139,7 @@ npm run agent
 | Layer | Tool | Why |
 |-------|------|-----|
 | Agent harness | Claude Code | Approved by hackathon, handles all code and blockchain interaction |
+| Agent NLP | Claude API (Haiku) | Powers natural language understanding in the CLI agent |
 | Blockchain | Base (Ethereum L2) | Cheap transactions, EAS already deployed |
 | Attestations | EAS (Ethereum Attestation Service) | Battle-tested, no custom contracts needed |
 | Smart contract interaction | ethers.js v6 | Industry standard for Ethereum |

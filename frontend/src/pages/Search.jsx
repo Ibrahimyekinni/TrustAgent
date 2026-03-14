@@ -74,7 +74,11 @@ export default function Search() {
       setLoading(false);
     } catch (err) {
       setLoading(false);
-      setError("Error querying the blockchain: " + err.message);
+      if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+        setError("Network error -- couldn't reach the EAS indexer. Check your internet connection and try again.");
+      } else {
+        setError("Error querying the blockchain: " + err.message);
+      }
     }
   }
 

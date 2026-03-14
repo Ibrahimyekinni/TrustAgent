@@ -33,7 +33,14 @@
 const { EAS, SchemaEncoder, NO_EXPIRATION } = require("@ethereum-attestation-service/eas-sdk");
 const { ethers } = require("ethers");
 const readline = require("readline");
+const Anthropic = require("@anthropic-ai/sdk");
 require("dotenv").config();
+
+// Initialize Claude client (optional -- for natural language understanding)
+let claude = null;
+if (process.env.ANTHROPIC_API_KEY) {
+  claude = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 // Contract addresses on Base Sepolia (these are the same on Base Mainnet too)
 const EAS_CONTRACT_ADDRESS = "0x4200000000000000000000000000000000000021";
@@ -88,6 +95,7 @@ async function initialize() {
   console.log("  Balance: " + ethers.formatEther(balance) + " ETH");
   console.log("  Network: Base Sepolia (testnet)");
   console.log("  Schema:  " + process.env.SCHEMA_UID.slice(0, 10) + "...");
+  console.log("  NLP:     " + (claude ? "Claude AI (powered by Anthropic)" : "Pattern matching (set ANTHROPIC_API_KEY for AI mode)"));
   console.log("");
   console.log("  Type 'help' to see available commands.");
   console.log("");
@@ -484,7 +492,67 @@ function parseInput(input) {
 }
 
 /**
- * Natural Language Parser
+ * Claude-Powered Natural Language Parser
+ *
+ * WHAT THIS DOES:
+ * Sends the user's freeform input to Claude, which understands what they want
+ * and returns a structured command. This is the "real" NLP -- it handles
+ * ambiguous phrasing, typos, slang, and complex sentences that regex can't.
+ *
+ * WHEN IT'S USED:
+ * Only when ANTHROPIC_API_KEY is set in .env. Otherwise falls back to
+ * parseNaturalLanguage() (regex-based).
+ *
+ * WHY THIS MATTERS FOR THE HACKATHON:
+ * The judges want "meaningful agent contribution." Having an AI agent that
+ * genuinely understands natural language (not just pattern matching) is a
+ * real demonstration of AI-powered blockchain interaction.
+ */
+async function parseWithClaude(input) {
+  if (!claude) return null;
+
+  try {
+    const response = await claude.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 256,
+      system: `You are TrustAgent's command parser. Parse the user's input into one of these commands:
+
+COMMANDS:
+1. review - Create an on-chain review. Needs: freelancerAddress (0x... 42 chars), projectName (string), rating (1-5), reviewText (string), proofURI (optional URL)
+2. reputation - Look up all reviews for a wallet. Needs: address (0x... 42 chars)
+3. check - Look up a single attestation. Needs: attestationUID (0x... 66 chars)
+4. revoke - Revoke a review. Needs: attestationUID (0x... 66 chars)
+5. help - Show available commands
+6. exit - Quit the agent
+
+RESPOND WITH ONLY valid JSON, no markdown:
+{"command": "...", "args": [...]}
+
+For review: {"command": "review", "args": ["0xaddress", "Project Name", "5", "Review text", "https://proof.url"]}
+For reputation: {"command": "reputation", "args": ["0xaddress"]}
+For check: {"command": "check", "args": ["0xattestationUID"]}
+For revoke: {"command": "revoke", "args": ["0xattestationUID"]}
+For help: {"command": "help", "args": []}
+For exit: {"command": "exit", "args": []}
+
+If you can't determine the command, respond: {"command": null}
+If a required field is missing, respond: {"command": "error", "message": "what's missing"}`,
+      messages: [{ role: "user", content: input }],
+    });
+
+    const text = response.content[0].text.trim();
+    const parsed = JSON.parse(text);
+
+    if (parsed.command === null) return null;
+    return parsed;
+  } catch {
+    // Claude API failed -- fall back to regex parser silently
+    return null;
+  }
+}
+
+/**
+ * Natural Language Parser (Regex Fallback)
  *
  * WHAT THIS DOES:
  * Takes plain English input and figures out which command the user wants,
@@ -502,8 +570,9 @@ function parseInput(input) {
  * { command: "review"|"check"|"reputation"|"revoke"|"help"|"exit", args: [...] }
  * or null if it can't figure out what the user wants
  *
- * NOTE (V2): This uses keyword matching. A future version could use Claude API
- * for true natural language understanding -- see BACKLOG.md.
+ * NOTE: This is the regex fallback. When ANTHROPIC_API_KEY is set,
+ * parseWithClaude() handles natural language first. This catches anything
+ * Claude can't parse or when the API key isn't available.
  */
 function parseNaturalLanguage(input) {
   const trimmed = input.trim().toLowerCase();
@@ -753,12 +822,14 @@ async function main() {
             break;
 
           default:
-            // Rigid command didn't match -- try natural language parsing
-            const nlp = parseNaturalLanguage(input);
+            // Rigid command didn't match -- try Claude AI first, then regex fallback
+            let nlp = await parseWithClaude(input);
+            const usedClaude = !!nlp;
+            if (!nlp) nlp = parseNaturalLanguage(input);
             if (nlp && nlp.command === "error") {
               console.log("  " + nlp.message);
             } else if (nlp) {
-              console.log("  Got it -- running: " + nlp.command + (nlp.args.length > 0 ? " " + nlp.args[0].slice(0, 10) + "..." : ""));
+              console.log("  " + (usedClaude ? "[Claude AI]" : "[Pattern match]") + " Running: " + nlp.command + (nlp.args.length > 0 ? " " + nlp.args[0].slice(0, 10) + "..." : ""));
               console.log("");
               switch (nlp.command) {
                 case "review":

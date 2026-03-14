@@ -45,15 +45,13 @@ Built a zero-dependency frontend that queries the EAS GraphQL API directly from 
 
 ---
 
-### 4. Smarter Input Parsing (Natural language)
+### 4. Smarter Input Parsing (Natural language) -- DONE (V1)
 
-**Problem:** The agent requires exact command syntax like `review 0x1234... "Project" 5 "Great work"`. Real users would rather type something like "leave a 5 star review for 0x1234 on the Logo Design project, they did great work."
+Implemented local keyword-based natural language parser. Users can now type plain English like "leave a 5 star review for 0x1234... on Logo Design, great work" and the agent extracts the intent and parameters. Rigid commands still work as a fallback.
 
-**What we could do:**
-- Add basic natural language parsing to extract intent and parameters from plain English
-- Or integrate with Claude API for actual NLP understanding
+**V2 upgrade:** Integrate Claude API for true NLP understanding -- handles edge cases the keyword parser can't, supports any phrasing. Requires an Anthropic API key.
 
-**Status:** Planned for Day 3+
+**Completed:** Day 3 (March 14, 2026)
 
 ---
 

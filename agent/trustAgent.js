@@ -12,13 +12,19 @@
  * 2. Handles all the blockchain complexity behind the scenes
  * 3. Creates and reads attestations without the user needing to know Solidity or EAS
  *
- * COMMANDS:
+ * COMMANDS (exact syntax or natural language):
  *   review <address> <project> <rating> <review>  -- Create an attestation
  *   check <attestationUID>                         -- Read a single attestation
  *   reputation <address>                           -- See ALL reviews for a freelancer
  *   revoke <attestationUID>                        -- Revoke a review you created
  *   help                                           -- Show available commands
  *   exit                                           -- Quit the agent
+ *
+ * NATURAL LANGUAGE EXAMPLES:
+ *   "leave a 5 star review for 0x1234... on Logo Design, amazing work"
+ *   "show me the reputation for 0x1234..."
+ *   "how is 0x1234... rated?"
+ *   "revoke review 0xabc123..."
  *
  * HOW TO RUN:
  *   node agent/trustAgent.js
@@ -32,8 +38,9 @@ require("dotenv").config();
 // Contract addresses on Base Sepolia (these are the same on Base Mainnet too)
 const EAS_CONTRACT_ADDRESS = "0x4200000000000000000000000000000000000021";
 
-// Our schema -- the "review form" fields
-const SCHEMA_STRING = "address freelancer, string projectName, uint8 rating, string review";
+// Our schemas -- V1 and V2
+const SCHEMA_STRING_V1 = "address freelancer, string projectName, uint8 rating, string review";
+const SCHEMA_STRING_V2 = "address freelancer, string projectName, uint8 rating, string review, string proofURI";
 
 // EAS GraphQL API -- this is a search engine for attestations.
 // Instead of looking up one attestation at a time by UID, we can search
@@ -95,7 +102,7 @@ async function initialize() {
  * The agent takes those inputs, encodes them into the format EAS expects,
  * sends a transaction to the blockchain, and waits for confirmation.
  */
-async function createReview(freelancerAddress, projectName, rating, reviewText) {
+async function createReview(freelancerAddress, projectName, rating, reviewText, proofURI) {
   // Validate the wallet address format
   if (!ethers.isAddress(freelancerAddress)) {
     console.log("  Invalid wallet address: " + freelancerAddress);
@@ -110,27 +117,37 @@ async function createReview(freelancerAddress, projectName, rating, reviewText) 
     return;
   }
 
+  const proof = proofURI || "";
+
   console.log("");
   console.log("  Creating on-chain review...");
   console.log("  Freelancer: " + freelancerAddress);
   console.log("  Project:    " + projectName);
   console.log("  Rating:     " + ratingNum + " / 5");
   console.log("  Review:     " + reviewText);
+  if (proof) console.log("  Proof:      " + proof);
   console.log("");
 
-  // Encode the data for the blockchain
-  const schemaEncoder = new SchemaEncoder(SCHEMA_STRING);
-  const encodedData = schemaEncoder.encodeData([
+  // Use V2 schema (with proofURI field)
+  const schemaUID = process.env.SCHEMA_UID_V2 || process.env.SCHEMA_UID;
+  const schemaString = process.env.SCHEMA_UID_V2 ? SCHEMA_STRING_V2 : SCHEMA_STRING_V1;
+
+  const schemaEncoder = new SchemaEncoder(schemaString);
+  const encodeFields = [
     { name: "freelancer", value: freelancerAddress, type: "address" },
     { name: "projectName", value: projectName, type: "string" },
     { name: "rating", value: ratingNum, type: "uint8" },
     { name: "review", value: reviewText, type: "string" },
-  ]);
+  ];
+  if (process.env.SCHEMA_UID_V2) {
+    encodeFields.push({ name: "proofURI", value: proof, type: "string" });
+  }
+  const encodedData = schemaEncoder.encodeData(encodeFields);
 
   console.log("  Sending transaction to Base Sepolia...");
 
   const transaction = await eas.attest({
-    schema: process.env.SCHEMA_UID,
+    schema: schemaUID,
     data: {
       recipient: freelancerAddress,
       expirationTime: NO_EXPIRATION,
@@ -216,11 +233,7 @@ async function getReputation(freelancerAddress) {
   console.log("");
   console.log("  Searching for all reviews for " + freelancerAddress.slice(0, 10) + "...");
 
-  // This is a GraphQL query -- it's like a very specific search request.
-  // We're asking: "Find all attestations where:
-  //   - the schema matches our review schema (SCHEMA_UID)
-  //   - the recipient is this freelancer's address
-  //   - order them newest first"
+  // Query both V1 and V2 schemas to get all reviews
   const query = `
     query GetAttestations($where: AttestationWhereInput) {
       attestations(where: $where, orderBy: [{ time: desc }]) {
@@ -229,33 +242,38 @@ async function getReputation(freelancerAddress) {
         recipient
         time
         revocationTime
+        schemaId
         data
       }
     }
   `;
 
-  const variables = {
-    where: {
-      schemaId: { equals: process.env.SCHEMA_UID },
-      recipient: { equals: freelancerAddress },
-    },
-  };
+  // Fetch V1 and V2 reviews in parallel
+  const [v1Response, v2Response] = await Promise.all([
+    fetch(EAS_GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { where: { schemaId: { equals: process.env.SCHEMA_UID }, recipient: { equals: freelancerAddress } } } }),
+    }),
+    process.env.SCHEMA_UID_V2 ? fetch(EAS_GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { where: { schemaId: { equals: process.env.SCHEMA_UID_V2 }, recipient: { equals: freelancerAddress } } } }),
+    }) : Promise.resolve({ json: () => ({ data: { attestations: [] } }) }),
+  ]);
 
-  // Send the search request to the EAS GraphQL API
-  const response = await fetch(EAS_GRAPHQL_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
+  const [v1Result, v2Result] = await Promise.all([v1Response.json(), v2Response.json()]);
 
-  const result = await response.json();
-
-  if (result.errors) {
-    console.log("  Error querying EAS: " + result.errors[0].message);
+  if (v1Result.errors) {
+    console.log("  Error querying EAS: " + v1Result.errors[0].message);
     return;
   }
 
-  const attestations = result.data.attestations;
+  // Combine and sort by time descending
+  const attestations = [
+    ...v1Result.data.attestations,
+    ...(v2Result.data ? v2Result.data.attestations : []),
+  ].sort((a, b) => Number(b.time) - Number(a.time));
 
   if (attestations.length === 0) {
     console.log("");
@@ -267,20 +285,25 @@ async function getReputation(freelancerAddress) {
   }
 
   // Decode each attestation and collect the data
-  const schemaEncoder = new SchemaEncoder(SCHEMA_STRING);
+  const schemaEncoderV1 = new SchemaEncoder(SCHEMA_STRING_V1);
+  const schemaEncoderV2 = process.env.SCHEMA_UID_V2 ? new SchemaEncoder(SCHEMA_STRING_V2) : null;
   const reviews = [];
   let totalRating = 0;
   let activeCount = 0;
 
   for (const att of attestations) {
-    const decoded = schemaEncoder.decodeData(att.data);
+    const isV2 = att.schemaId === process.env.SCHEMA_UID_V2;
+    const encoder = isV2 && schemaEncoderV2 ? schemaEncoderV2 : schemaEncoderV1;
+    const decoded = encoder.decodeData(att.data);
     const rating = Number(decoded[2].value.value);
     const isRevoked = Number(att.revocationTime) > 0;
+    const proofURI = isV2 && decoded[4] ? decoded[4].value.value : "";
 
     reviews.push({
       projectName: decoded[1].value.value,
       rating: rating,
       reviewText: decoded[3].value.value,
+      proofURI: proofURI,
       reviewer: att.attester,
       date: new Date(Number(att.time) * 1000).toLocaleDateString(),
       revoked: isRevoked,
@@ -314,6 +337,7 @@ async function getReputation(freelancerAddress) {
     console.log("  ║  " + (i + 1) + ". " + r.projectName + status);
     console.log("  ║     " + "★".repeat(r.rating) + "☆".repeat(5 - r.rating) + " (" + r.rating + "/5)");
     console.log("  ║     \"" + r.reviewText + "\"");
+    if (r.proofURI) console.log("  ║     Proof: " + r.proofURI);
     console.log("  ║     By: " + r.reviewer.slice(0, 10) + "...  |  " + r.date);
   }
 
@@ -394,29 +418,34 @@ async function revokeReview(attestationUID) {
  */
 function showHelp() {
   console.log("");
-  console.log("  Available commands:");
-  console.log("");
-  console.log("  review <address> <project> <rating> <review>");
-  console.log("    Create an on-chain review for a freelancer.");
-  console.log('    Example: review 0x1234...abcd "Logo Design" 5 "Fast delivery, loved it"');
-  console.log("");
-  console.log("  reputation <address>");
-  console.log("    See ALL reviews and average rating for a freelancer.");
-  console.log("    Example: reputation 0x1234...abcd");
-  console.log("");
-  console.log("  check <attestationUID>");
-  console.log("    Look up a single review by its attestation ID.");
-  console.log("    Example: check 0xabc123...");
-  console.log("");
-  console.log("  revoke <attestationUID>");
-  console.log("    Revoke a review you created (only works on your own reviews).");
-  console.log("    Example: revoke 0xabc123...");
-  console.log("");
-  console.log("  help");
-  console.log("    Show this help message.");
-  console.log("");
-  console.log("  exit");
-  console.log("    Quit TrustAgent.");
+  console.log("  ┌─── TrustAgent Commands ─────────────────────────────────");
+  console.log("  │");
+  console.log("  │  You can use exact commands OR just type naturally.");
+  console.log("  │");
+  console.log("  │  LEAVE A REVIEW");
+  console.log('  │    review 0x1234... "Logo Design" 5 "Fast delivery"');
+  console.log("  │    or: leave a 5 star review for 0x1234... on Logo Design, fast delivery");
+  console.log("  │    or: give 0x1234... a 4 star rating on Website Build, solid work");
+  console.log("  │");
+  console.log("  │  CHECK REPUTATION");
+  console.log("  │    reputation 0x1234...");
+  console.log("  │    or: show me the reputation for 0x1234...");
+  console.log("  │    or: how is 0x1234... rated?");
+  console.log("  │");
+  console.log("  │  LOOK UP A REVIEW");
+  console.log("  │    check 0xabc123...");
+  console.log("  │    or: look up attestation 0xabc123...");
+  console.log("  │");
+  console.log("  │  REVOKE A REVIEW");
+  console.log("  │    revoke 0xabc123...");
+  console.log("  │    or: revoke review 0xabc123...");
+  console.log("  │    or: take back 0xabc123...");
+  console.log("  │");
+  console.log("  │  OTHER");
+  console.log("  │    help    -- Show this message");
+  console.log("  │    exit    -- Quit TrustAgent");
+  console.log("  │");
+  console.log("  └─────────────────────────────────────────────────────────");
   console.log("");
 }
 
@@ -452,6 +481,195 @@ function parseInput(input) {
   if (current) parts.push(current);
 
   return parts;
+}
+
+/**
+ * Natural Language Parser
+ *
+ * WHAT THIS DOES:
+ * Takes plain English input and figures out which command the user wants,
+ * plus extracts the parameters they provided. This lets users type things like
+ * "give 0x1234 a 5 star review on Logo Design, amazing work" instead of
+ * memorizing exact command syntax.
+ *
+ * HOW IT WORKS:
+ * 1. Extract any 0x addresses from the input (wallet or attestation IDs)
+ * 2. Look for keyword patterns that signal which command the user wants
+ * 3. For review commands, extract the rating, project name, and review text
+ * 4. Return a structured command object that the main loop can execute
+ *
+ * RETURNS:
+ * { command: "review"|"check"|"reputation"|"revoke"|"help"|"exit", args: [...] }
+ * or null if it can't figure out what the user wants
+ *
+ * NOTE (V2): This uses keyword matching. A future version could use Claude API
+ * for true natural language understanding -- see BACKLOG.md.
+ */
+function parseNaturalLanguage(input) {
+  const trimmed = input.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  // Extract all 0x addresses from the input
+  // Wallet addresses are 42 chars (0x + 40 hex), attestation UIDs are 66 chars (0x + 64 hex)
+  const addressPattern = /0x[a-fA-F0-9]{40,64}/gi;
+  const addresses = input.match(addressPattern) || [];
+
+  // --- HELP ---
+  if (/^(help|commands|what can you do|how do|how does|what do)/i.test(trimmed)) {
+    return { command: "help", args: [] };
+  }
+
+  // --- EXIT ---
+  // "leave" alone means exit, but "leave a review" means review -- so exclude "leave a/the"
+  if (/^(exit|quit|bye|goodbye|close|stop)\b/i.test(trimmed) ||
+      /^leave\b/i.test(trimmed) && !/^leave\s+(a|the|an)\b/i.test(trimmed)) {
+    return { command: "exit", args: [] };
+  }
+
+  // --- REVOKE ---
+  // Keywords: revoke, take back, remove, undo, cancel, delete
+  if (/^revoke\b/i.test(trimmed) ||
+      /\b(revoke|take\s*back|undo|cancel)\b/i.test(trimmed) && addresses.length > 0 ||
+      /\b(remove|delete)\b/i.test(trimmed) && /\b(review|attestation|rating)\b/i.test(trimmed)) {
+    if (addresses.length === 0) {
+      return { command: "error", message: "I need the attestation ID to revoke. It starts with 0x and is 66 characters long." };
+    }
+    // Use the longest address (attestation UIDs are longer than wallet addresses)
+    const uid = addresses.sort((a, b) => b.length - a.length)[0];
+    return { command: "revoke", args: [uid] };
+  }
+
+  // --- REVIEW ---
+  // Keywords: review, rate, leave, give, write, submit, post + review/rating/stars/feedback
+  const isReviewIntent =
+    /\b(leave|give|write|submit|post|create|add)\b.*\b(review|rating|feedback|stars?)\b/i.test(trimmed) ||
+    /\b(rate|review)\b.*\b(for|on)\b/i.test(trimmed) ||
+    /\b\d\s*stars?\b/i.test(trimmed) && addresses.length > 0;
+
+  if (isReviewIntent && addresses.length > 0) {
+    // Find the wallet address (42 chars, not 66)
+    const walletAddress = addresses.find(a => a.length === 42) || addresses[0];
+
+    // Extract rating (1-5)
+    const ratingMatch = input.match(/\b([1-5])\s*(?:\/\s*5|stars?|out of 5)?/i) ||
+                        input.match(/\brating\s*(?:of\s*)?([1-5])/i);
+    if (!ratingMatch) {
+      return { command: "error", message: "I need a rating between 1 and 5. Try something like '5 stars' or 'rating 4'." };
+    }
+    const rating = ratingMatch[1];
+
+    // Extract project name -- look for common patterns
+    // "on <project>", "for <project>", "project <name>"
+    const originalInput = input;
+    let projectName = null;
+
+    // Pattern: quoted project name anywhere (highest priority -- user was explicit)
+    const quotedParts = originalInput.match(/"([^"]+)"/g);
+    if (quotedParts && quotedParts.length >= 1) {
+      projectName = quotedParts[0].replace(/"/g, "");
+    }
+
+    // Pattern: "on the <project name>," or "on <project name>,"
+    // Captures everything between "on (the)" and the next comma, period, or dash-space
+    if (!projectName) {
+      const onMatch = originalInput.match(/\bon\s+(?:the\s+)?(?:project\s+)?([^,.\-"]+?)(?:\s*,|\s*\.|\s*-\s|\s*$)/i);
+      if (onMatch) {
+        let name = onMatch[1].trim();
+        // Remove trailing words that are review text starters
+        name = name.replace(/\s+(they|she|he|it|was|is|did)\s*$/i, "").trim();
+        if (name && !name.startsWith("0x")) projectName = name;
+      }
+    }
+
+    // Pattern: "for the <project name>," (but not "for 0x...")
+    if (!projectName) {
+      const forMatch = originalInput.match(/\bfor\s+(?:the\s+)?(?:project\s+)?([^,.\-"]+?)(?:\s*,|\s*\.|\s*-\s|\s*$)/i);
+      if (forMatch) {
+        let name = forMatch[1].trim();
+        name = name.replace(/\s+(they|she|he|it|was|is|did)\s*$/i, "").trim();
+        if (name && !name.startsWith("0x")) projectName = name;
+      }
+    }
+
+    // Pattern: "project: <name>" or "project name: <name>"
+    if (!projectName) {
+      const projMatch = originalInput.match(/\bproject\s*(?:name)?[\s:]+["']?([^"',.\-]+?)["']?\s*(?:,|\.|$)/i);
+      if (projMatch) projectName = projMatch[1].trim();
+    }
+
+    if (!projectName) {
+      return { command: "error", message: "I need the project name. Try putting it in quotes like \"Logo Design\" or say 'on the Logo Design project'." };
+    }
+
+    // Extract review text -- everything after common separators
+    let reviewText = null;
+
+    // Look for review text after separators: comma, dash, "they", "was", "did"
+    const reviewSeparators = /(?:,\s*|\.\s*|-\s+)(they\s+|she\s+|he\s+|it\s+|was\s+|did\s+|really\s+|very\s+|absolutely\s+|great\s+|amazing\s+|excellent\s+|good\s+|solid\s+|terrible\s+|bad\s+|poor\s+|[a-z])/i;
+    const sepMatch = originalInput.match(reviewSeparators);
+    if (sepMatch) {
+      const sepIndex = originalInput.indexOf(sepMatch[0]);
+      reviewText = originalInput.slice(sepIndex).replace(/^[,.\-\s]+/, "").trim();
+    }
+
+    // Pattern: quoted review text (second quoted string)
+    if (!reviewText) {
+      const quotedParts = originalInput.match(/"([^"]+)"/g);
+      if (quotedParts && quotedParts.length >= 2) {
+        reviewText = quotedParts[1].replace(/"/g, "");
+      }
+    }
+
+    if (!reviewText) {
+      reviewText = "Great work";  // Default review text
+    }
+
+    // Clean up -- capitalize first letter
+    reviewText = reviewText.charAt(0).toUpperCase() + reviewText.slice(1);
+
+    return { command: "review", args: [walletAddress, projectName, rating, reviewText] };
+  }
+
+  // --- CHECK ---
+  // Must come BEFORE reputation so "look up review 0x..." hits check, not reputation
+  // Keywords: check, verify, view, inspect + attestation/review + long attestation ID
+  const isCheckIntent =
+    /\b(check|verify|view|inspect|look\s*up|show|see)\b.*\b(attestation|review)\b/i.test(trimmed) ||
+    /\b(attestation|review)\b.*\b(check|verify|view|details)\b/i.test(trimmed);
+
+  if (isCheckIntent && addresses.length > 0) {
+    const uid = addresses.sort((a, b) => b.length - a.length)[0];
+    return { command: "check", args: [uid] };
+  }
+
+  // --- REPUTATION ---
+  // Keywords: reputation, rep, profile, reviews for, how is, show, look up + wallet address
+  const isRepIntent =
+    /\b(reputation|rep|profile|rating|reviews?)\b.*\b(for|of|on)\b/i.test(trimmed) ||
+    /\b(show|look\s*up|check|get|find|see|view)\b.*\b(reputation|rep|profile|reviews?|rating)\b/i.test(trimmed) ||
+    /\bhow\s+is\b.*\brated\b/i.test(trimmed) ||
+    /\bwhat('s|\s+is)\s+(the\s+)?(rep|reputation|rating)\b/i.test(trimmed) ||
+    /\b(show|look\s*up|check)\b.*0x/i.test(trimmed) && !/\b(attestation|review|revoke)\b/i.test(trimmed);
+
+  if (isRepIntent && addresses.length > 0) {
+    const walletAddress = addresses.find(a => a.length === 42) || addresses[0];
+    return { command: "reputation", args: [walletAddress] };
+  }
+
+  // --- FALLBACK: just an address with no clear intent ---
+  // If they just pasted an address, guess based on length
+  if (addresses.length > 0 && trimmed.replace(/0x[a-f0-9]+/gi, "").trim().length < 10) {
+    const addr = addresses[0];
+    if (addr.length === 42) {
+      // Wallet address -- probably wants reputation
+      return { command: "reputation", args: [addr] };
+    } else if (addr.length === 66) {
+      // Attestation UID -- probably wants to check it
+      return { command: "check", args: [addr] };
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -535,8 +753,41 @@ async function main() {
             break;
 
           default:
-            console.log("  Unknown command: " + command);
-            console.log("  Type 'help' to see available commands.");
+            // Rigid command didn't match -- try natural language parsing
+            const nlp = parseNaturalLanguage(input);
+            if (nlp && nlp.command === "error") {
+              console.log("  " + nlp.message);
+            } else if (nlp) {
+              console.log("  Got it -- running: " + nlp.command + (nlp.args.length > 0 ? " " + nlp.args[0].slice(0, 10) + "..." : ""));
+              console.log("");
+              switch (nlp.command) {
+                case "review":
+                  await createReview(nlp.args[0], nlp.args[1], nlp.args[2], nlp.args[3]);
+                  break;
+                case "check":
+                  await checkReview(nlp.args[0]);
+                  break;
+                case "reputation":
+                  await getReputation(nlp.args[0]);
+                  break;
+                case "revoke":
+                  await revokeReview(nlp.args[0]);
+                  break;
+                case "help":
+                  showHelp();
+                  break;
+                case "exit":
+                  console.log("\n  Shutting down TrustAgent. See you next time.\n");
+                  rl.close();
+                  process.exit(0);
+                  break;
+              }
+            } else {
+              console.log("  I didn't quite get that. Try something like:");
+              console.log('    "leave a 5 star review for 0x1234... on Logo Design, great work"');
+              console.log('    "show me the reputation for 0x1234..."');
+              console.log("  Or type 'help' for all commands.");
+            }
             break;
         }
       } catch (error) {

@@ -29,3 +29,6 @@ build/
 
 # Private / personal files
 docs/x-post-guide.html
+
+# Legacy frontend backup
+frontend-legacy/

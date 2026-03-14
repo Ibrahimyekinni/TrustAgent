@@ -4,15 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TrustAgent -- On-Chain Freelancer Reputation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+  <!-- Animated background layer -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb--1" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb--2" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb--3" aria-hidden="true"></div>
+
   <!-- Header -->
   <header>
     <div class="header-content">
-      <h1>TrustAgent</h1>
-      <p class="tagline">On-Chain Freelancer Reputation. Portable. Permanent. Trustless.</p>
+      <p class="header-label">On-Chain Reputation Protocol</p>
+      <h1>Trust<span class="h1-accent">Agent</span></h1>
+      <p class="tagline">Portable. Permanent. Trustless.</p>
     </div>
   </header>
 
@@ -42,7 +52,11 @@
 
     <!-- Loading State -->
     <div id="loading" class="loading hidden">
-      <div class="spinner"></div>
+      <div class="spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+      </div>
       <p>Querying the blockchain...</p>
     </div>
 

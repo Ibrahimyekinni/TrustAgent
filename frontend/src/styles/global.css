@@ -1610,3 +1610,16 @@ footer a:hover {
   .navbar { flex-direction: column; gap: 0.8rem; }
   .nav-links { gap: 0.25rem; }
 }
+
+/* My Reviews Section (Review page) */
+.my-reviews-section {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.my-reviews-section h3 {
+  color: var(--neon);
+  margin-bottom: 1.2rem;
+  font-size: 1.2rem;
+}

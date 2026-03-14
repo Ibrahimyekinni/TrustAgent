@@ -1,0 +1,188 @@
+import { useState } from "react";
+import { fetchAttestations, decodeAttestationData, isValidAddress, generateAvatar } from "../utils/eas";
+import Stars from "../components/Stars";
+import ReviewCard from "../components/ReviewCard";
+import Spinner from "../components/Spinner";
+
+const DEMO_ADDRESS = "0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa";
+
+export default function Search() {
+  const [address, setAddress] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [results, setResults] = useState(null); // { reviews, activeCount, revokedCount, avgRating, avgStarsNum }
+  const [noResults, setNoResults] = useState(false);
+
+  async function handleSearch(searchAddress) {
+    const addr = (searchAddress || address).trim();
+
+    if (!addr) {
+      setError("Please enter a wallet address.");
+      return;
+    }
+    if (!isValidAddress(addr)) {
+      setError("Invalid wallet address. It should start with 0x and be 42 characters long.");
+      return;
+    }
+
+    setError("");
+    setResults(null);
+    setNoResults(false);
+    setLoading(true);
+
+    try {
+      const attestations = await fetchAttestations(addr);
+
+      if (attestations.length === 0) {
+        setNoResults(true);
+        setLoading(false);
+        return;
+      }
+
+      const reviews = [];
+      let totalRating = 0;
+      let activeCount = 0;
+      let revokedCount = 0;
+
+      for (const att of attestations) {
+        const decoded = decodeAttestationData(att.data, att.schemaId);
+        const isRevoked = parseInt(att.revocationTime) > 0;
+
+        reviews.push({
+          projectName: decoded.projectName,
+          rating: decoded.rating,
+          reviewText: decoded.review,
+          proofURI: decoded.proofURI || "",
+          reviewer: att.attester,
+          date: new Date(parseInt(att.time) * 1000).toLocaleDateString(),
+          revoked: isRevoked,
+          uid: att.id,
+        });
+
+        if (isRevoked) {
+          revokedCount++;
+        } else {
+          totalRating += decoded.rating;
+          activeCount++;
+        }
+      }
+
+      const avgRating = activeCount > 0 ? (totalRating / activeCount).toFixed(1) : "N/A";
+      const avgStarsNum = activeCount > 0 ? Math.round(totalRating / activeCount) : 0;
+
+      setResults({ reviews, activeCount, revokedCount, avgRating, avgStarsNum, address: addr });
+      setLoading(false);
+    } catch (err) {
+      setLoading(false);
+      setError("Error querying the blockchain: " + err.message);
+    }
+  }
+
+  function useDemoAddress() {
+    setAddress(DEMO_ADDRESS);
+    handleSearch(DEMO_ADDRESS);
+  }
+
+  return (
+    <div className="search-page">
+      <section className="search-section">
+        <h2>Look up a freelancer's reputation</h2>
+        <p className="search-description">
+          Enter a wallet address to see their on-chain reviews. These reviews are
+          stored on Base (Ethereum L2) using EAS attestations -- no platform can
+          delete or modify them.
+        </p>
+        <div className="search-bar">
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="0x... (paste a wallet address)"
+            spellCheck="false"
+          />
+          <button onClick={() => handleSearch()}>Search</button>
+        </div>
+        <p className="demo-hint">
+          Try the demo address:{" "}
+          <a href="#" onClick={(e) => { e.preventDefault(); useDemoAddress(); }}>
+            {DEMO_ADDRESS}
+          </a>
+        </p>
+      </section>
+
+      {/* Loading */}
+      {loading && <Spinner message="Querying the blockchain..." />}
+
+      {/* Error */}
+      {error && (
+        <div className="error">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* No results */}
+      {noResults && (
+        <div className="no-results">
+          <h3>No reviews found</h3>
+          <p>This address has no on-chain reviews yet, or the address may be incorrect.</p>
+        </div>
+      )}
+
+      {/* Results */}
+      {results && (
+        <section className="results">
+          {/* Summary Card */}
+          <div className="summary-card">
+            <div className="summary-header">
+              <div className="avatar">{generateAvatar(results.address)}</div>
+              <div className="summary-info">
+                <h3>{results.address}</h3>
+                <Stars rating={results.avgStarsNum} size="lg" />
+                <p className="review-count">
+                  {results.activeCount} active review{results.activeCount !== 1 ? "s" : ""}
+                  {results.revokedCount > 0 ? `, ${results.revokedCount} revoked` : ""}
+                </p>
+              </div>
+            </div>
+            <div className="summary-stats">
+              <div className="stat">
+                <span className="stat-value">{results.activeCount}</span>
+                <span className="stat-label">Total Reviews</span>
+              </div>
+              <div className="stat">
+                <span className="stat-value">{results.avgRating}</span>
+                <span className="stat-label">Avg Rating</span>
+              </div>
+              <div className="stat">
+                <span className="stat-value">{results.revokedCount}</span>
+                <span className="stat-label">Revoked</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Reviews list */}
+          <div className="reviews-section">
+            <h3>Reviews</h3>
+            {results.reviews.map((review) => (
+              <ReviewCard key={review.uid} review={review} />
+            ))}
+          </div>
+
+          {/* Blockchain proof */}
+          <div className="proof-section">
+            <h4>Blockchain Verification</h4>
+            <p>
+              All reviews are stored as EAS attestations on{" "}
+              <a href="https://base-sepolia.easscan.org" target="_blank" rel="noopener">
+                Base Sepolia
+              </a>
+              . Each review links to its on-chain proof -- click "View on-chain" to verify
+              independently.
+            </p>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

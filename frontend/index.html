@@ -1,133 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustAgent -- On-Chain Freelancer Reputation</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <!-- Animated background layer -->
-  <div class="bg-grid" aria-hidden="true"></div>
-  <div class="bg-orb bg-orb--1" aria-hidden="true"></div>
-  <div class="bg-orb bg-orb--2" aria-hidden="true"></div>
-  <div class="bg-orb bg-orb--3" aria-hidden="true"></div>
-
-  <!-- Header -->
-  <header>
-    <div class="header-content">
-      <p class="header-label">On-Chain Reputation Protocol</p>
-      <h1>Trust<span class="h1-accent">Agent</span></h1>
-      <p class="tagline">Portable. Permanent. Trustless.</p>
-    </div>
-  </header>
-
-  <!-- Search Section -->
-  <main>
-    <section class="search-section">
-      <h2>Look up a freelancer's reputation</h2>
-      <p class="search-description">
-        Enter a wallet address to see their on-chain reviews. These reviews are
-        stored on Base (Ethereum L2) using EAS attestations -- no platform can
-        delete or modify them.
-      </p>
-      <div class="search-bar">
-        <input
-          type="text"
-          id="addressInput"
-          placeholder="0x... (paste a wallet address)"
-          spellcheck="false"
-        >
-        <button id="searchBtn" onclick="lookupReputation()">Search</button>
-      </div>
-      <p class="demo-hint" id="demoHint">
-        Try the demo address:
-        <a href="#" onclick="useDemoAddress(); return false;">0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa</a>
-      </p>
-    </section>
-
-    <!-- Loading State -->
-    <div id="loading" class="loading hidden">
-      <div class="spinner">
-        <div class="spinner-ring"></div>
-        <div class="spinner-ring"></div>
-        <div class="spinner-ring"></div>
-      </div>
-      <p>Querying the blockchain...</p>
-    </div>
-
-    <!-- Error State -->
-    <div id="error" class="error hidden">
-      <p id="errorMessage"></p>
-    </div>
-
-    <!-- Results Section -->
-    <section id="results" class="results hidden">
-
-      <!-- Summary Card -->
-      <div class="summary-card">
-        <div class="summary-header">
-          <div class="avatar" id="avatar"></div>
-          <div class="summary-info">
-            <h3 id="freelancerAddress"></h3>
-            <div class="stars-large" id="avgStars"></div>
-            <p class="review-count" id="reviewCount"></p>
-          </div>
-        </div>
-        <div class="summary-stats">
-          <div class="stat">
-            <span class="stat-value" id="totalReviews">0</span>
-            <span class="stat-label">Total Reviews</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value" id="avgRating">0</span>
-            <span class="stat-label">Avg Rating</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value" id="revokedCount">0</span>
-            <span class="stat-label">Revoked</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Individual Reviews -->
-      <div class="reviews-section">
-        <h3>Reviews</h3>
-        <div id="reviewsList"></div>
-      </div>
-
-      <!-- Blockchain Proof -->
-      <div class="proof-section">
-        <h4>Blockchain Verification</h4>
-        <p>
-          All reviews are stored as EAS attestations on
-          <a href="https://base-sepolia.easscan.org" target="_blank" rel="noopener">Base Sepolia</a>.
-          Each review links to its on-chain proof -- click "View on-chain" to verify independently.
-        </p>
-      </div>
-    </section>
-
-    <!-- No Results State -->
-    <div id="noResults" class="no-results hidden">
-      <h3>No reviews found</h3>
-      <p>This address has no on-chain reviews yet, or the address may be incorrect.</p>
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer>
-    <p>
-      Built for the <strong>Synthesis Hackathon 2026</strong> |
-      Track: Agents that Trust |
-      Powered by <a href="https://attest.org" target="_blank" rel="noopener">EAS</a> on
-      <a href="https://base.org" target="_blank" rel="noopener">Base</a>
-    </p>
-  </footer>
-
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrustAgent -- On-Chain Freelancer Reputation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

@@ -46,14 +46,21 @@ yungmaster (zero blockchain experience) directed strategy and made key decisions
 
 **Why judges care:** The hackathon explicitly evaluates "meaningful agent contribution" and the human staying in control.
 
+## 8. Natural Language CLI (Talk to the Agent Like a Human)
+
+The CLI agent understands plain English, not just rigid command syntax. Users can type "leave a 5 star review for 0x1234 on Logo Design, great work" instead of memorizing exact commands. The parser extracts intent, wallet addresses, ratings, project names, and review text from natural language. V1 uses local keyword matching; V2 path to Claude API integration is documented.
+
+**Why judges care:** Shows the agent is approachable and user-friendly, not just a developer tool. The V2 upgrade path shows product thinking beyond the hackathon.
+
 ---
 
 ## Demo Script (suggested order)
 
 1. Show the frontend -- paste the demo address, see the reputation report load
 2. Click "View on-chain" on a review -- show it's REAL data on the blockchain
-3. Switch to the CLI -- create a new review live
-4. Refresh the frontend -- show the new review appears immediately
-5. Revoke a review via CLI -- refresh frontend, show it's marked as revoked
-6. Show the codebase -- highlight no backend, direct blockchain queries
-7. Tell the story -- "I had zero blockchain experience 9 days ago"
+3. Switch to the CLI -- type a natural language command like "show me the rep for 0x1234..."
+4. Create a new review using natural language -- "give 0x1234 a 5 star review on Demo Project, built live at the hackathon"
+5. Refresh the frontend -- show the new review appears immediately
+6. Revoke a review via CLI -- refresh frontend, show it's marked as revoked
+7. Show the codebase -- highlight no backend, direct blockchain queries
+8. Tell the story -- "I had zero blockchain experience 9 days ago"

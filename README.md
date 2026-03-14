@@ -31,42 +31,125 @@ When a freelancer completes work:
 - **For clients:** You can verify a freelancer's track record across all platforms, not just the one you're on
 - **For the ecosystem:** Trust becomes decentralized and portable, breaking platform lock-in
 
-## How It Works
+## Features
 
-1. **Issues attestations** -- On-chain proof when a freelancer completes work
-2. **Verifies reputation** -- Checks attestation history to produce a trust score
-3. **Portable trust** -- Not locked to any single platform
+### CLI Agent (`npm run agent`)
+
+An interactive command-line agent that handles all blockchain complexity behind simple commands:
+
+| Command | What it does |
+|---------|-------------|
+| `review <address> <project> <rating> <review>` | Create an on-chain review for a freelancer |
+| `reputation <address>` | See ALL reviews and average rating for a freelancer |
+| `check <attestationUID>` | Look up a single review by its attestation ID |
+| `revoke <attestationUID>` | Revoke a review you created (only your own) |
+| `help` | Show available commands |
+
+Key behaviors:
+- **Revocation-aware scoring** -- Revoked reviews are visible (transparency) but excluded from the average rating
+- **Ownership checks** -- Before revoking, the agent verifies your wallet matches the original attester. EAS enforces this at the smart contract level too, but we check client-side first for a clear error message instead of a confusing blockchain error
+- **Input validation** -- Validates wallet addresses, rating bounds (1-5), and attestation UIDs before sending transactions
+
+### Web Frontend (`frontend/`)
+
+A zero-dependency web UI that lets anyone look up a freelancer's on-chain reputation. No server, no database, no API keys -- the browser talks directly to the EAS GraphQL API. The blockchain IS the database.
+
+- Paste any wallet address to see their full reputation report
+- Star ratings, review text, project names, and reviewer addresses
+- Each review links to its on-chain proof on EASScan -- click to verify independently
+- Revoked reviews are visually marked and excluded from the score
+- XSS protection on all on-chain data (anyone can write anything in an attestation, including malicious JavaScript -- we sanitize before rendering)
+- ABI decoding done manually in the browser instead of importing the full EAS SDK -- zero dependencies, fast load
+
+## Architecture
+
+```
+                    ┌─────────────────────┐
+                    │   Base Sepolia (L2)  │
+                    │                     │
+                    │  EAS Smart Contract  │
+                    │  (attestations live  │
+                    │   here permanently)  │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │  EAS GraphQL Indexer │
+                    │  (search engine for  │
+                    │   attestations)      │
+                    └──────┬───────┬──────┘
+                           │       │
+              ┌────────────┘       └────────────┐
+              │                                 │
+     ┌────────┴────────┐              ┌─────────┴────────┐
+     │   CLI Agent      │              │   Web Frontend    │
+     │                  │              │                  │
+     │  Write reviews   │              │  Read reviews    │
+     │  Read reviews    │              │  (browser-only,  │
+     │  Revoke reviews  │              │   no backend)    │
+     │  (needs wallet)  │              │                  │
+     └─────────────────┘              └──────────────────┘
+```
+
+The CLI agent needs a wallet (private key) because it writes to the blockchain. The frontend only reads, so it needs nothing -- just open the HTML file.
+
+## On-Chain Artifacts
+
+Everything below is live on Base Sepolia right now. Click the links to verify independently.
+
+- **Schema:** [`0x5d6661...70ce30`](https://base-sepolia.easscan.org/schema/view/0x5d6661abb66715bfc01d1744f52f52594c1b01ed473d9facb2825988ef70ce30) -- Our review "form" registered on-chain: `address freelancer, string projectName, uint8 rating, string review`
+- **Test attestation 1:** [`0x7bd386...2779`](https://base-sepolia.easscan.org/attestation/view/0x7bd386bab4474368720ae19737fd65d31cc9597cf82bd061192291437c5c2779) -- 5-star Manychat Automation review
+- **Test attestation 2:** [`0x6956ff...0236`](https://base-sepolia.easscan.org/attestation/view/0x6956ffed6a2c4d02fa0e919dfc49909075e9174a206ea346a9319bcd83740236) -- 4-star GHL Automation review (created via CLI agent)
+
+## Try It Yourself
+
+### Web Frontend (no setup needed)
+
+1. Open `frontend/index.html` in your browser
+2. Paste the demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
+3. Click Search -- you'll see real reviews pulled directly from the blockchain
+
+### CLI Agent
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Create a .env file with your wallet and schema
+#    (see .env.example for the format)
+cp .env.example .env
+
+# 3. Run the agent
+npm run agent
+
+# 4. Try these commands:
+#    reputation 0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa
+#    review 0x<address> "Project Name" 5 "Great work"
+#    check 0x<attestationUID>
+```
+
+## Tech Stack
+
+| Layer | Tool | Why |
+|-------|------|-----|
+| Agent harness | Claude Code | Approved by hackathon, handles all code and blockchain interaction |
+| Blockchain | Base (Ethereum L2) | Cheap transactions, EAS already deployed |
+| Attestations | EAS (Ethereum Attestation Service) | Battle-tested, no custom contracts needed |
+| Smart contract interaction | ethers.js v6 | Industry standard for Ethereum |
+| Attestation encoding/decoding | @ethereum-attestation-service/eas-sdk | Schema registration and ABI encoding |
+| Frontend | Vanilla HTML/CSS/JS | Zero dependencies, no build step, no backend |
+| Dev tooling | Hardhat | Compilation and deployment |
 
 ## Built By Humans, For Humans
 
 This isn't a project where the agent does everything and the human watches. The freelancer stays in control. The agent is the tool that does the on-chain work -- issuing attestations, querying reputation, interacting with smart contracts -- but the human decides what gets attested, who to trust, and when to act.
 
-This entire project was built by two humans (one with no blockchain experience) directing an AI agent (Claude Code). The [conversation log](docs/conversationLog.md) shows exactly how that collaboration worked -- the brainstorms, the pivots, the breakthroughs.
-
-## Tech Stack
-
-- **Agent:** Claude Code
-- **Blockchain:** Base (Ethereum L2)
-- **Smart Contracts:** Solidity via Hardhat
-- **Attestations:** EAS (Ethereum Attestation Service)
+This entire project was built by two humans (one with zero blockchain experience) directing an AI agent (Claude Code). The [conversation log](docs/conversationLog.md) shows exactly how that collaboration worked -- the brainstorms, the pivots, the breakthroughs. A quiz system was used after each build phase to make sure the human understood what was being built, not just copy-pasting.
 
 ## Team
 
-- **Ibrahim (yungmaster)** -- AI/automation, agent logic
-- **Mercury** -- Crypto/web3, smart contracts
-
-## Setup
-
-```bash
-npm install
-npx hardhat compile
-```
-
-## Deploy (Base Sepolia Testnet)
-
-```bash
-npx hardhat run scripts/deploy.js --network baseSepolia
-```
+- **Ibrahim (yungmaster)** -- AI/automation expert, project vision and strategy, agent logic. Zero blockchain experience before this hackathon.
+- **Mercury** -- Crypto/web3, smart contracts and blockchain guidance.
+- **Claude Code** -- AI agent handling all code, blockchain interactions, and technical execution.
 
 ## License
 

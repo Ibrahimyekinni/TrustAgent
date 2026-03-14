@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fetchAttestations, decodeAttestationData, isValidAddress, generateAvatar } from "../utils/eas";
+import { fetchAttestations, decodeAttestationData, isValidAddress, generateAvatar, looksLikeEnsName, resolveEnsName } from "../utils/eas";
 import Stars from "../components/Stars";
 import ReviewCard from "../components/ReviewCard";
 import Spinner from "../components/Spinner";
@@ -12,23 +12,44 @@ export default function Search() {
   const [error, setError] = useState("");
   const [results, setResults] = useState(null); // { reviews, activeCount, revokedCount, avgRating, avgStarsNum }
   const [noResults, setNoResults] = useState(false);
+  const [resolvedName, setResolvedName] = useState(""); // shows the ENS name that was resolved
 
   async function handleSearch(searchAddress) {
-    const addr = (searchAddress || address).trim();
+    let addr = (searchAddress || address).trim();
 
     if (!addr) {
-      setError("Please enter a wallet address.");
-      return;
-    }
-    if (!isValidAddress(addr)) {
-      setError("Invalid wallet address. It should start with 0x and be 42 characters long.");
+      setError("Please enter a wallet address or ENS name.");
       return;
     }
 
     setError("");
     setResults(null);
     setNoResults(false);
+    setResolvedName("");
     setLoading(true);
+
+    // If it looks like an ENS/Basename, resolve it first
+    if (!isValidAddress(addr) && looksLikeEnsName(addr)) {
+      try {
+        const resolved = await resolveEnsName(addr);
+        if (!resolved) {
+          setError(`Could not resolve "${addr}" -- no address found for that name.`);
+          setLoading(false);
+          return;
+        }
+        setResolvedName(addr);
+        addr = resolved;
+        setAddress(resolved);
+      } catch (err) {
+        setError(`Failed to resolve "${addr}": ${err.message}`);
+        setLoading(false);
+        return;
+      }
+    } else if (!isValidAddress(addr)) {
+      setError("Invalid input. Enter a wallet address (0x...) or an ENS name (e.g. vitalik.eth).");
+      setLoading(false);
+      return;
+    }
 
     try {
       const attestations = await fetchAttestations(addr);
@@ -102,7 +123,7 @@ export default function Search() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="0x... (paste a wallet address)"
+            placeholder="0x... or name.eth or name.base.eth"
             spellCheck="false"
           />
           <button onClick={() => handleSearch()}>Search</button>
@@ -114,6 +135,13 @@ export default function Search() {
           </a>
         </p>
       </section>
+
+      {/* Resolved ENS name */}
+      {resolvedName && results && (
+        <div className="resolved-name">
+          <p>Resolved <strong>{resolvedName}</strong> to <code>{results.address}</code></p>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && <Spinner message="Querying the blockchain..." />}
@@ -141,7 +169,8 @@ export default function Search() {
             <div className="summary-header">
               <div className="avatar">{generateAvatar(results.address)}</div>
               <div className="summary-info">
-                <h3>{results.address}</h3>
+                <h3>{resolvedName || results.address}</h3>
+                {resolvedName && <p className="resolved-address">{results.address}</p>}
                 <Stars rating={results.avgStarsNum} size="lg" />
                 <p className="review-count">
                   {results.activeCount} active review{results.activeCount !== 1 ? "s" : ""}

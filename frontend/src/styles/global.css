@@ -722,6 +722,35 @@ main {
 }
 
 /* ============================================
+   RESOLVED ENS NAME
+   ============================================ */
+.resolved-name {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.2rem;
+  background: rgba(93, 214, 44, 0.08);
+  border: 1px solid rgba(93, 214, 44, 0.2);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: rgba(248, 248, 248, 0.7);
+}
+
+.resolved-name code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--neon);
+  word-break: break-all;
+}
+
+.resolved-address {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  color: rgba(248, 248, 248, 0.4);
+  margin-top: 0.25rem;
+  word-break: break-all;
+}
+
+/* ============================================
    LOADING / SPINNER
    ============================================ */
 .loading {
@@ -788,6 +817,8 @@ main {
 .error p {
   color: #f05050;
   font-size: 0.9rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ============================================
@@ -893,6 +924,8 @@ main {
 .summary-info {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .summary-info h3 {
@@ -1042,6 +1075,8 @@ main {
   font-weight: 300;
   position: relative;
   z-index: 1;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .review-meta {
@@ -1055,6 +1090,8 @@ main {
   font-family: "JetBrains Mono", monospace;
   position: relative;
   z-index: 1;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .review-meta a {
@@ -1450,6 +1487,8 @@ main {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   animation: cardReveal 0.5s ease-out both;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .tx-success h3 {
@@ -1521,6 +1560,8 @@ footer a:hover {
 /* ============================================
    RESPONSIVE
    ============================================ */
+
+/* ---- Tablet (768px and below) ---- */
 @media (max-width: 768px) {
   .steps-grid {
     grid-template-columns: 1fr;
@@ -1535,6 +1576,10 @@ footer a:hover {
     font-size: 2.8rem;
   }
 
+  .hero {
+    padding: 3rem 0 2rem;
+  }
+
   .navbar {
     padding: 0.8rem 1rem;
   }
@@ -1543,8 +1588,79 @@ footer a:hover {
     padding: 0.4rem 0.8rem;
     font-size: 0.78rem;
   }
+
+  /* Summary stats: keep row but shrink text */
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.58rem;
+    letter-spacing: 1.2px;
+  }
+
+  /* Glass card padding reduction */
+  .glass-card {
+    padding: 1.5rem;
+  }
+
+  .step-card {
+    padding: 1.4rem;
+  }
+
+  /* Review card padding */
+  .review-card {
+    padding: 1.2rem;
+  }
+
+  /* Wallet address in summary -- ensure it never overflows */
+  .summary-info h3 {
+    font-size: 0.68rem;
+  }
+
+  /* Form inputs: ensure minimum touch target height */
+  .form-group input,
+  .form-group textarea {
+    padding: 0.9rem 1rem;
+    font-size: 0.85rem;
+    min-height: 44px;
+  }
+
+  /* Star selector: bigger touch targets */
+  .star-select {
+    font-size: 1.8rem;
+    padding: 0.2rem;
+  }
+
+  /* Search bar input touch target */
+  .search-bar input {
+    min-height: 48px;
+    font-size: 0.82rem;
+  }
+
+  .search-bar button {
+    min-height: 48px;
+  }
+
+  /* Connect button touch target */
+  .connect-btn {
+    min-height: 44px;
+    padding: 0.7rem 1.4rem;
+  }
+
+  /* Demo hint address: allow wrapping */
+  .demo-hint a {
+    word-break: break-all;
+    display: inline;
+  }
+
+  /* Footer text: softer wrapping */
+  footer p {
+    line-height: 1.8;
+  }
 }
 
+/* ---- Small tablets / large phones (600px and below) ---- */
 @media (max-width: 600px) {
   .hero-title {
     font-size: 2.4rem;
@@ -1572,24 +1688,25 @@ footer a:hover {
     text-align: center;
   }
 
+  /* Summary stats: 3-column row still works at this size */
   .summary-stats {
-    flex-direction: column;
-    gap: 1.2rem;
+    gap: 0;
   }
 
-  .stat:not(:last-child)::after {
-    display: none;
-  }
-
-  .stat:not(:last-child) {
-    padding-bottom: 1.2rem;
-    border-bottom: 1px solid var(--glass-border);
+  .stat-value {
+    font-size: 1.3rem;
   }
 
   .review-meta {
     flex-direction: column;
     gap: 0.4rem;
     align-items: flex-start;
+  }
+
+  /* Review meta spans: allow long addresses to wrap */
+  .review-meta span {
+    word-break: break-all;
+    min-width: 0;
   }
 
   main {
@@ -1603,12 +1720,335 @@ footer a:hover {
   .form-row { flex-direction: column; }
   .wallet-bar { flex-direction: column; align-items: stretch; }
   .review-links { flex-direction: column; gap: 0.3rem; }
+  .review-links a { text-align: center; }
 
   .hero-ctas { flex-direction: column; align-items: center; }
   .cta-btn { width: 100%; max-width: 300px; }
 
   .navbar { flex-direction: column; gap: 0.8rem; }
-  .nav-links { gap: 0.25rem; }
+  .nav-links { gap: 0.25rem; flex-wrap: wrap; justify-content: center; }
+
+  /* Review card header: handle long project names */
+  .review-card-header {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .review-project {
+    font-size: 0.92rem;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  /* Proof section text */
+  .proof-section {
+    padding: 1.2rem;
+  }
+
+  .proof-section p {
+    font-size: 0.76rem;
+  }
+
+  /* TX success adjustments */
+  .tx-success {
+    padding: 1.5rem;
+  }
+
+  .tx-success p {
+    font-size: 0.82rem;
+    word-break: break-word;
+  }
+}
+
+/* ---- Mobile phones (480px and below) ---- */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 2rem;
+    letter-spacing: -1px;
+  }
+
+  .hero {
+    padding: 2rem 0 1.5rem;
+  }
+
+  .hero-description {
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .tagline {
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+  }
+
+  .header-label {
+    font-size: 0.6rem !important;
+    letter-spacing: 2px !important;
+    padding: 0.35rem 1rem !important;
+  }
+
+  /* Main content: tighter side padding */
+  main {
+    padding: 0.8rem 0.6rem;
+  }
+
+  /* Navbar: tighter on phones */
+  .navbar {
+    padding: 0.7rem 0.8rem;
+    gap: 0.5rem;
+  }
+
+  .nav-logo {
+    font-size: 1.2rem;
+  }
+
+  .nav-link {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
+  /* Summary card: full stack layout */
+  .summary-card {
+    padding: 1.2rem;
+  }
+
+  .summary-header {
+    gap: 1rem;
+  }
+
+  .avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 1.1rem;
+  }
+
+  .summary-info h3 {
+    font-size: 0.62rem;
+    line-height: 1.4;
+  }
+
+  .stars-large {
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+  }
+
+  .review-count {
+    font-size: 0.76rem;
+  }
+
+  /* Summary stats: stack vertically on very small screens */
+  .summary-stats {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .stat:not(:last-child)::after {
+    display: none;
+  }
+
+  .stat:not(:last-child) {
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 0.58rem;
+    letter-spacing: 1px;
+    margin-top: 0.3rem;
+  }
+
+  /* Search section */
+  .search-section h2 {
+    font-size: 1.05rem;
+  }
+
+  .search-description {
+    font-size: 0.82rem;
+  }
+
+  .search-bar input {
+    font-size: 0.75rem;
+    padding: 0.85rem 0.8rem;
+  }
+
+  .search-bar button {
+    padding: 0.85rem 1.5rem;
+    font-size: 0.82rem;
+  }
+
+  /* Demo hint: ensure long address wraps */
+  .demo-hint {
+    font-size: 0.72rem;
+    line-height: 1.6;
+  }
+
+  .demo-hint a {
+    font-size: 0.6rem;
+    word-break: break-all;
+  }
+
+  /* Review cards */
+  .review-card {
+    padding: 1rem;
+  }
+
+  .review-project {
+    font-size: 0.88rem;
+  }
+
+  .review-stars {
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+  }
+
+  .review-text {
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+
+  .review-meta {
+    font-size: 0.65rem;
+  }
+
+  .review-meta a {
+    font-size: 0.65rem;
+  }
+
+  .proof-link {
+    font-size: 0.65rem !important;
+  }
+
+  /* Review form */
+  .review-form-section h2 {
+    font-size: 1.05rem;
+  }
+
+  .form-group label {
+    font-size: 0.72rem;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    padding: 0.8rem 0.8rem;
+    font-size: 0.82rem;
+  }
+
+  .form-group input[type="text"],
+  .form-group input[type="url"] {
+    font-size: 0.72rem;
+  }
+
+  .form-hint {
+    font-size: 0.65rem;
+  }
+
+  .submit-btn {
+    padding: 0.9rem 1.5rem;
+    font-size: 0.88rem;
+  }
+
+  /* Wallet bar */
+  .wallet-bar {
+    padding: 0.7rem 0.9rem;
+    gap: 0.8rem;
+  }
+
+  .wallet-status {
+    font-size: 0.72rem;
+  }
+
+  .connect-btn {
+    font-size: 0.75rem;
+    padding: 0.6rem 1.2rem;
+  }
+
+  /* How section */
+  .how-section h2 {
+    font-size: 1.05rem;
+  }
+
+  .step-card {
+    padding: 1.2rem;
+  }
+
+  .step-number {
+    font-size: 1.8rem;
+  }
+
+  .step-card h3 {
+    font-size: 0.88rem;
+  }
+
+  .step-card p {
+    font-size: 0.78rem;
+  }
+
+  /* Tech section */
+  .tech-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .tech-name {
+    font-size: 0.88rem;
+  }
+
+  .tech-desc {
+    font-size: 0.62rem;
+  }
+
+  /* Bottom CTA */
+  .bottom-cta h2 {
+    font-size: 1.1rem;
+  }
+
+  /* Problem section */
+  .problem-section p {
+    font-size: 0.85rem;
+  }
+
+  /* Glass card */
+  .glass-card {
+    padding: 1.2rem;
+  }
+
+  /* CTA buttons */
+  .cta-btn {
+    padding: 0.85rem 2rem;
+    font-size: 0.85rem;
+    max-width: 100%;
+  }
+
+  /* Footer */
+  footer {
+    padding: 1.5rem 0.8rem;
+    font-size: 0.68rem;
+    line-height: 1.8;
+  }
+
+  /* My reviews section */
+  .my-reviews-section h3 {
+    font-size: 1rem;
+  }
+
+  /* Error state */
+  .error {
+    padding: 1rem;
+  }
+
+  .error p {
+    font-size: 0.82rem;
+    word-break: break-word;
+  }
+
+  /* Orbs: even smaller on phones */
+  .bg-orb--1 { width: 300px; height: 300px; }
+  .bg-orb--2 { width: 250px; height: 250px; }
+  .bg-orb--3 { width: 180px; height: 180px; }
 }
 
 /* My Reviews Section (Review page) */

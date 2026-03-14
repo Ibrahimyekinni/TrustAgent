@@ -2,6 +2,7 @@
  * EAS (Ethereum Attestation Service) utilities
  * Constants, encoding/decoding, and GraphQL queries
  */
+import { ethers } from "ethers";
 
 export const EAS_GRAPHQL_URL = "https://base-sepolia.easscan.org/graphql";
 export const EAS_CONTRACT_ADDRESS = "0x4200000000000000000000000000000000000021";
@@ -104,6 +105,33 @@ export async function fetchAttestations(address) {
 
 export function isValidAddress(address) {
   return /^0x[0-9a-fA-F]{40}$/.test(address);
+}
+
+/**
+ * Check if an input looks like an ENS or Basename (contains .eth).
+ */
+export function looksLikeEnsName(input) {
+  return /\.eth$/i.test(input.trim());
+}
+
+/**
+ * Resolve an ENS name or Basename to a wallet address.
+ * - .base.eth names resolve via Base mainnet RPC
+ * - .eth names resolve via Ethereum mainnet RPC
+ * Returns the resolved address string, or null if resolution fails.
+ */
+export async function resolveEnsName(name) {
+  const trimmed = name.trim().toLowerCase();
+
+  let provider;
+  if (trimmed.endsWith(".base.eth")) {
+    provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+  } else {
+    provider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
+  }
+
+  const address = await provider.resolveName(trimmed);
+  return address;
 }
 
 export function generateAvatar(address) {

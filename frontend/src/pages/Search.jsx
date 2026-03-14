@@ -3,6 +3,7 @@ import { fetchAttestations, decodeAttestationData, isValidAddress, generateAvata
 import Stars from "../components/Stars";
 import ReviewCard from "../components/ReviewCard";
 import Spinner from "../components/Spinner";
+import TrustScore from "../components/TrustScore";
 
 const DEMO_ADDRESS = "0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa";
 
@@ -167,9 +168,12 @@ export default function Search() {
           {/* Summary Card */}
           <div className="summary-card">
             <div className="summary-header">
-              <div className="avatar">{generateAvatar(results.address)}</div>
+              {(() => {
+                const av = generateAvatar(results.address);
+                return <div className="avatar" style={{ background: av.bg }}>{av.initials}</div>;
+              })()}
               <div className="summary-info">
-                <h3>{resolvedName || results.address}</h3>
+                <h3>{resolvedName || `${results.address.slice(0, 6)}...${results.address.slice(-4)}`}</h3>
                 {resolvedName && <p className="resolved-address">{results.address}</p>}
                 <Stars rating={results.avgStarsNum} size="lg" />
                 <p className="review-count">
@@ -194,6 +198,9 @@ export default function Search() {
             </div>
           </div>
 
+          {/* Trust Analysis */}
+          <TrustScore results={results} />
+
           {/* Reviews list */}
           <div className="reviews-section">
             <h3>Reviews</h3>
@@ -210,8 +217,8 @@ export default function Search() {
               <a href="https://base-sepolia.easscan.org" target="_blank" rel="noopener">
                 Base Sepolia
               </a>
-              . Each review links to its on-chain proof -- click "View on-chain" to verify
-              independently.
+              . Each review can be independently verified -- click "Verify" on any
+              review to see its on-chain proof.
             </p>
           </div>
         </section>

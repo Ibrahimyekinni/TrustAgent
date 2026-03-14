@@ -134,6 +134,15 @@ export async function resolveEnsName(name) {
   return address;
 }
 
+/**
+ * Generate a unique gradient avatar from a wallet address.
+ */
 export function generateAvatar(address) {
-  return address.slice(2, 4).toUpperCase();
+  const hex = address.slice(2, 14);
+  const hue1 = parseInt(hex.slice(0, 3), 16) % 360;
+  const hue2 = (hue1 + 40) % 360;
+  return {
+    initials: address.slice(2, 4).toUpperCase(),
+    bg: `linear-gradient(135deg, hsl(${hue1}, 70%, 45%), hsl(${hue2}, 80%, 35%))`,
+  };
 }

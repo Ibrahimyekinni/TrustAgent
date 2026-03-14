@@ -10,7 +10,7 @@ export default function ReviewCard({ review }) {
         {revoked && <span className="revoked-badge">Revoked</span>}
       </div>
       <Stars rating={rating} />
-      <p className="review-text">"{reviewText}"</p>
+      <p className="review-text">{reviewText}</p>
       <div className="review-meta">
         <span>By: {reviewer.slice(0, 10)}... | {date}</span>
         <span className="review-links">
@@ -23,8 +23,10 @@ export default function ReviewCard({ review }) {
             href={`https://base-sepolia.easscan.org/attestation/view/${uid}`}
             target="_blank"
             rel="noopener"
+            className="onchain-link"
+            title="Verify this review independently on the blockchain"
           >
-            View on-chain &rarr;
+            Verify
           </a>
         </span>
       </div>

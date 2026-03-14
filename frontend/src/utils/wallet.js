@@ -19,6 +19,18 @@ const BASE_SEPOLIA_CONFIG = {
  */
 export async function connectWallet() {
   if (typeof window.ethereum === "undefined") {
+    // On mobile, offer to open MetaMask's in-app browser
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      const currentUrl = encodeURIComponent(window.location.href);
+      const openMetaMask = confirm(
+        "No wallet detected.\n\nTo connect on mobile, open this site inside the MetaMask app's built-in browser.\n\nTap OK to open MetaMask."
+      );
+      if (openMetaMask) {
+        window.location.href = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+      }
+      throw new Error("Redirecting to MetaMask...");
+    }
     throw new Error("No wallet detected. Please install a Web3 wallet (MetaMask, Coinbase Wallet, etc.) to leave reviews.");
   }
 

@@ -1,6 +1,9 @@
 /**
  * createAttestation.js
  *
+ * NOTE: This is a standalone utility script from Day 1. For normal use,
+ * run the CLI agent instead: node agent/trustAgent.js
+ *
  * WHAT THIS DOES:
  * Creates an on-chain attestation (review/reputation entry) for a freelancer.
  * Think of it like leaving a review on Fiverr, except:

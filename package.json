@@ -4,10 +4,7 @@
   "description": "On-chain freelancer reputation system using attestations on Base",
   "scripts": {
     "agent": "node agent/trustAgent.js",
-    "compile": "hardhat compile",
-    "test": "hardhat test",
-    "register-schema": "node scripts/registerSchema.js",
-    "deploy:sepolia": "hardhat run scripts/deploy.js --network baseSepolia"
+    "register-schema": "node scripts/registerSchema.js"
   },
   "license": "MIT",
   "devDependencies": {

@@ -1,6 +1,9 @@
 /**
  * getAttestation.js
  *
+ * NOTE: This is a standalone utility script from Day 1. For normal use,
+ * run the CLI agent instead: node agent/trustAgent.js
+ *
  * WHAT THIS DOES:
  * Reads an attestation from the blockchain and displays it in a readable format.
  * This is the "verification" step -- anyone can run this to check if a freelancer's

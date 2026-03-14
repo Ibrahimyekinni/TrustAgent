@@ -7,7 +7,7 @@ Process documentation of human-agent collaboration for TrustAgent.
 ### Decisions Made
 - Project name: TrustAgent
 - Track: Agents that Trust
-- Team: Ibrahim (AI/automation) + Mercury (crypto/web3)
+- Team: Ibrahim (yungmaster) -- solo builder with Claude Code as AI agent
 - Tech stack: Claude Code + Hardhat + Solidity + Base Sepolia
 - Agent harness: claude-code
 - Registered on-chain via Synthesis API

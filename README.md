@@ -52,14 +52,14 @@ Key behaviors:
 
 ### Web Frontend (`frontend/`)
 
-A zero-dependency web UI that lets anyone look up a freelancer's on-chain reputation. No server, no database, no API keys -- the browser talks directly to the EAS GraphQL API. The blockchain IS the database.
+A React + Vite web app with 3 dedicated pages (Home, Search, Review) and a neon glassmorphism design. No backend, no database, no API keys -- the browser talks directly to the EAS GraphQL API and Base Sepolia. The blockchain IS the database.
 
-- Paste any wallet address to see their full reputation report
-- Star ratings, review text, project names, and reviewer addresses
+- **Home** -- Landing page explaining the problem and how TrustAgent solves it
+- **Search** -- Paste any wallet address to see their full reputation report with star ratings, review text, and blockchain verification links
+- **Leave a Review** -- Connect your wallet (MetaMask, Coinbase Wallet, etc.) and submit an on-chain review directly from the browser
 - Each review links to its on-chain proof on EASScan -- click to verify independently
 - Revoked reviews are visually marked and excluded from the score
-- XSS protection on all on-chain data (anyone can write anything in an attestation, including malicious JavaScript -- we sanitize before rendering)
-- ABI decoding done manually in the browser instead of importing the full EAS SDK -- zero dependencies, fast load
+- ABI decoding done manually in the browser -- no heavy SDK imports
 
 ## Architecture
 
@@ -90,7 +90,7 @@ A zero-dependency web UI that lets anyone look up a freelancer's on-chain reputa
      └─────────────────┘              └──────────────────┘
 ```
 
-The CLI agent needs a wallet (private key) because it writes to the blockchain. The frontend only reads, so it needs nothing -- just open the HTML file.
+The CLI agent needs a wallet (private key) because it writes to the blockchain. The frontend connects to the user's browser wallet for submitting reviews, and reads directly from the EAS GraphQL API for lookups.
 
 ## On-Chain Artifacts
 
@@ -102,11 +102,15 @@ Everything below is live on Base Sepolia right now. Click the links to verify in
 
 ## Try It Yourself
 
-### Web Frontend (no setup needed)
+### Web Frontend
 
-1. Open `frontend/index.html` in your browser
-2. Paste the demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
-3. Click Search -- you'll see real reviews pulled directly from the blockchain
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open `http://127.0.0.1:3000/` and try the demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
 
 ### CLI Agent
 
@@ -136,19 +140,18 @@ npm run agent
 | Attestations | EAS (Ethereum Attestation Service) | Battle-tested, no custom contracts needed |
 | Smart contract interaction | ethers.js v6 | Industry standard for Ethereum |
 | Attestation encoding/decoding | @ethereum-attestation-service/eas-sdk | Schema registration and ABI encoding |
-| Frontend | Vanilla HTML/CSS/JS | Zero dependencies, no build step, no backend |
+| Frontend | React + Vite | 3-page SPA with neon glassmorphism design |
 | Dev tooling | Hardhat | Compilation and deployment |
 
 ## Built By Humans, For Humans
 
 This isn't a project where the agent does everything and the human watches. The freelancer stays in control. The agent is the tool that does the on-chain work -- issuing attestations, querying reputation, interacting with smart contracts -- but the human decides what gets attested, who to trust, and when to act.
 
-This entire project was built by two humans (one with zero blockchain experience) directing an AI agent (Claude Code). The [conversation log](docs/conversationLog.md) shows exactly how that collaboration worked -- the brainstorms, the pivots, the breakthroughs. A quiz system was used after each build phase to make sure the human understood what was being built, not just copy-pasting.
+This entire project was built by a human with zero blockchain experience directing an AI agent (Claude Code). The [conversation log](docs/conversationLog.md) shows exactly how that collaboration worked -- the brainstorms, the pivots, the breakthroughs. A quiz system was used after each build phase to make sure the human understood what was being built, not just copy-pasting.
 
 ## Team
 
 - **Ibrahim (yungmaster)** -- AI/automation expert, project vision and strategy, agent logic. Zero blockchain experience before this hackathon.
-- **Mercury** -- Crypto/web3, smart contracts and blockchain guidance.
 - **Claude Code** -- AI agent handling all code, blockchain interactions, and technical execution.
 
 ## License

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchAttestations, decodeAttestationData, isValidAddress, generateAvatar, looksLikeEnsName, resolveEnsName } from "../utils/eas";
 import Stars from "../components/Stars";
 import ReviewCard from "../components/ReviewCard";
@@ -14,6 +15,7 @@ export default function Search() {
   const [results, setResults] = useState(null); // { reviews, activeCount, revokedCount, avgRating, avgStarsNum }
   const [noResults, setNoResults] = useState(false);
   const [resolvedName, setResolvedName] = useState(""); // shows the ENS name that was resolved
+  const [erc8004Agent, setErc8004Agent] = useState(null); // ERC-8004 identity if found
 
   async function handleSearch(searchAddress) {
     let addr = (searchAddress || address).trim();
@@ -27,6 +29,7 @@ export default function Search() {
     setResults(null);
     setNoResults(false);
     setResolvedName("");
+    setErc8004Agent(null);
     setLoading(true);
 
     // If it looks like an ENS/Basename, resolve it first
@@ -94,6 +97,22 @@ export default function Search() {
 
       setResults({ reviews, activeCount, revokedCount, avgRating, avgStarsNum, address: addr });
       setLoading(false);
+
+      // Cross-reference: check if this wallet has an ERC-8004 registered agent identity
+      fetch(`/api/agent-lookup?action=search&address=${addr}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data && data.found !== false && data.agentId) {
+            // Also fetch reputation for trust score integration
+            fetch(`/api/agent-lookup?action=reputation&agentId=${data.agentId}`)
+              .then((r) => r.ok ? r.json() : null)
+              .then((rep) => {
+                setErc8004Agent({ identity: data, reputation: rep });
+              })
+              .catch(() => setErc8004Agent({ identity: data, reputation: null }));
+          }
+        })
+        .catch(() => {});
     } catch (err) {
       setLoading(false);
       if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
@@ -112,11 +131,11 @@ export default function Search() {
   return (
     <div className="search-page">
       <section className="search-section">
-        <h2>Look up a freelancer's reputation</h2>
+        <h2>Look up on-chain reputation</h2>
         <p className="search-description">
-          Enter a wallet address to see their on-chain reviews. These reviews are
-          stored on Base (Ethereum L2) using EAS attestations -- no platform can
-          delete or modify them.
+          Enter a wallet address to see on-chain reviews and reputation data. Reviews are
+          stored on Base (Ethereum L2) using EAS attestations. If the address has a registered
+          ERC-8004 agent identity, that data is cross-referenced for a deeper trust analysis.
         </p>
         <div className="search-bar">
           <input
@@ -198,8 +217,30 @@ export default function Search() {
             </div>
           </div>
 
+          {/* ERC-8004 Registered Agent Badge */}
+          {erc8004Agent && (
+            <div className="erc8004-badge-card">
+              <div className="erc8004-badge-header">
+                <span className="erc8004-badge-icon">VERIFIED</span>
+                <span className="erc8004-badge-title">Registered ERC-8004 Agent</span>
+              </div>
+              <div className="erc8004-badge-details">
+                <span className="erc8004-badge-name">{erc8004Agent.identity.name}</span>
+                <span className="erc8004-badge-id">Agent #{erc8004Agent.identity.agentId}</span>
+                {erc8004Agent.reputation && erc8004Agent.reputation.feedbackCount > 0 && (
+                  <span className="erc8004-badge-rep">
+                    {erc8004Agent.reputation.feedbackCount} feedback entries | Avg: {erc8004Agent.reputation.avgScore}
+                  </span>
+                )}
+              </div>
+              <Link to="/agents" className="erc8004-badge-link">
+                View in Agent Registry
+              </Link>
+            </div>
+          )}
+
           {/* Trust Analysis */}
-          <TrustScore results={results} />
+          <TrustScore results={results} erc8004Data={erc8004Agent} />
 
           {/* Reviews list */}
           <div className="reviews-section">

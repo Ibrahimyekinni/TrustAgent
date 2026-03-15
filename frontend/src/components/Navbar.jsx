@@ -41,6 +41,9 @@ export default function Navbar() {
       <Link to="/search" className={`nav-link ${isActive("/search") ? "nav-link--active" : ""}`} onClick={closeMenu}>
         Search
       </Link>
+      <Link to="/agents" className={`nav-link ${isActive("/agents") ? "nav-link--active" : ""}`} onClick={closeMenu}>
+        Agents
+      </Link>
       <Link to="/review" className={`nav-link ${isActive("/review") ? "nav-link--active" : ""}`} onClick={closeMenu}>
         Leave Review
       </Link>

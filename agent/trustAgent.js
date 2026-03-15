@@ -185,14 +185,17 @@ async function checkReview(attestationUID) {
 
   const attestation = await eas.getAttestation(attestationUID);
 
-  // Decode the raw bytes back into readable data
-  const schemaEncoder = new SchemaEncoder(SCHEMA_STRING);
+  // Detect V1 vs V2 schema based on the attestation's schemaId
+  const isV2 = process.env.SCHEMA_UID_V2 && attestation.schema === process.env.SCHEMA_UID_V2;
+  const schemaString = isV2 ? SCHEMA_STRING_V2 : SCHEMA_STRING_V1;
+  const schemaEncoder = new SchemaEncoder(schemaString);
   const decodedData = schemaEncoder.decodeData(attestation.data);
 
   const freelancer = decodedData[0].value.value;
   const projectName = decodedData[1].value.value;
   const rating = Number(decodedData[2].value.value);
   const review = decodedData[3].value.value;
+  const proofURI = isV2 && decodedData[4] ? decodedData[4].value.value : "";
 
   // Display a nice summary
   console.log("");
@@ -202,9 +205,11 @@ async function checkReview(attestationUID) {
   console.log("  │  Project:     " + projectName);
   console.log("  │  Rating:      " + "★".repeat(rating) + "☆".repeat(5 - rating) + " (" + rating + "/5)");
   console.log("  │  Review:      " + review);
+  if (proofURI) console.log("  │  Proof:       " + proofURI);
   console.log("  │");
   console.log("  │  Reviewer:    " + attestation.attester);
   console.log("  │  Date:        " + new Date(Number(attestation.time) * 1000).toLocaleDateString());
+  console.log("  │  Schema:      " + (isV2 ? "V2" : "V1"));
   console.log("  │  Revoked:     " + (attestation.revocationTime > 0 ? "YES" : "No"));
   console.log("  │");
   console.log("  └────────────────────────────────────────");
@@ -398,8 +403,10 @@ async function revokeReview(attestationUID) {
     return;
   }
 
-  // Decode and show what's being revoked
-  const schemaEncoder = new SchemaEncoder(SCHEMA_STRING);
+  // Detect V1 vs V2 and decode
+  const isV2 = process.env.SCHEMA_UID_V2 && attestation.schema === process.env.SCHEMA_UID_V2;
+  const schemaString = isV2 ? SCHEMA_STRING_V2 : SCHEMA_STRING_V1;
+  const schemaEncoder = new SchemaEncoder(schemaString);
   const decoded = schemaEncoder.decodeData(attestation.data);
   const projectName = decoded[1].value.value;
   const rating = Number(decoded[2].value.value);
@@ -407,8 +414,10 @@ async function revokeReview(attestationUID) {
   console.log("  Revoking review for: " + projectName + " (" + rating + "/5)");
   console.log("  Sending revocation transaction...");
 
+  // Use the correct schema UID matching the attestation
+  const schemaUID = isV2 ? process.env.SCHEMA_UID_V2 : process.env.SCHEMA_UID;
   const transaction = await eas.revoke({
-    schema: process.env.SCHEMA_UID,
+    schema: schemaUID,
     data: { uid: attestationUID },
   });
 

@@ -20,6 +20,7 @@ export default function Review() {
   const [txResult, setTxResult] = useState(null); // { attestationUID, txHash }
   const [myReviews, setMyReviews] = useState([]); // Reviews submitted by this wallet
   const [loadingMyReviews, setLoadingMyReviews] = useState(false);
+  const [revokingUID, setRevokingUID] = useState(null);
 
   // Listen for MetaMask account/chain changes
   useEffect(() => {
@@ -82,6 +83,7 @@ export default function Review() {
           date: new Date(parseInt(att.time) * 1000).toLocaleDateString(),
           revoked: parseInt(att.revocationTime) > 0,
           uid: att.id,
+          schemaId: att.schemaId,
         };
       });
       setMyReviews(reviews);
@@ -89,6 +91,39 @@ export default function Review() {
       // Silently fail -- this is a nice-to-have, not critical
     }
     setLoadingMyReviews(false);
+  }
+
+  async function handleRevoke(attestationUID) {
+    if (!wallet.signer) return;
+    if (!confirm("Are you sure you want to revoke this review? This action is on-chain and costs gas.")) return;
+
+    setRevokingUID(attestationUID);
+    try {
+      // Determine which schema this attestation uses
+      const review = myReviews.find(r => r.uid === attestationUID);
+      const schemaId = review?.schemaId || SCHEMA_UID_V2;
+
+      const easContract = new ethers.Contract(EAS_CONTRACT_ADDRESS, EAS_ABI, wallet.signer);
+      const tx = await easContract.revoke({
+        schema: schemaId,
+        data: {
+          uid: attestationUID,
+          value: 0n,
+        },
+      });
+      await tx.wait();
+
+      // Refresh the reviews list
+      if (wallet.address) fetchMyReviews(wallet.address);
+      alert("Review revoked successfully. It will no longer count toward the average rating.");
+    } catch (err) {
+      if (err.code === "ACTION_REJECTED" || err.code === 4001) {
+        // User cancelled -- no alert needed
+      } else {
+        alert("Revocation failed: " + (err.reason || err.message || err));
+      }
+    }
+    setRevokingUID(null);
   }
 
   async function handleConnect() {
@@ -112,7 +147,13 @@ export default function Review() {
     const { freelancerAddress, projectName, rating, reviewText, proofURI } = form;
 
     if (!isValidAddress(freelancerAddress)) {
-      alert("Invalid freelancer wallet address.");
+      alert("Invalid wallet address.");
+      return;
+    }
+
+    // Block self-reviews -- you can't review yourself
+    if (freelancerAddress.toLowerCase() === wallet.address.toLowerCase()) {
+      alert("You cannot review yourself. Enter a different wallet address.");
       return;
     }
     if (!projectName.trim()) {
@@ -191,8 +232,8 @@ export default function Review() {
       <section className="review-form-section">
         <h2>Leave a Review</h2>
         <p className="search-description">
-          Submit an on-chain review for a freelancer. Your review is stored permanently
-          on the blockchain -- no platform can delete or modify it.
+          Submit an on-chain review as an EAS attestation. Your review is stored permanently
+          on Base -- no platform can delete or modify it. Works for agents, freelancers, and services.
         </p>
 
         {/* Wallet Connection */}
@@ -217,11 +258,11 @@ export default function Review() {
         {/* Review Form */}
         <form className="review-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="reviewAddress">Freelancer Wallet Address</label>
+            <label htmlFor="reviewAddress">Wallet Address</label>
             <input
               type="text"
               id="reviewAddress"
-              placeholder="0x... (the freelancer you're reviewing)"
+              placeholder="0x... (the agent or freelancer you're reviewing)"
               spellCheck="false"
               required
               value={form.freelancerAddress}
@@ -255,7 +296,7 @@ export default function Review() {
             <label htmlFor="reviewText">Review</label>
             <textarea
               id="reviewText"
-              placeholder="How was your experience working with this freelancer?"
+              placeholder="How was your experience? Describe the work performed."
               rows="3"
               required
               value={form.reviewText}
@@ -326,7 +367,12 @@ export default function Review() {
           <div className="my-reviews-section">
             <h3>Reviews You've Submitted ({myReviews.length})</h3>
             {myReviews.map((review) => (
-              <ReviewCard key={review.uid} review={review} />
+              <ReviewCard
+                key={review.uid}
+                review={review}
+                onRevoke={handleRevoke}
+                revoking={revokingUID === review.uid}
+              />
             ))}
           </div>
         )}

@@ -112,3 +112,85 @@ Process documentation of human-agent collaboration for TrustAgent.
 - yungmaster caught the "Connect MetaMask" copy issue -- insisted on wallet-agnostic language
 - yungmaster made the call to remove Mercury and go solo when teammate stopped contributing
 - Design iteration continued: both CTA buttons matched to primary neon style per yungmaster's direction
+
+## March 14-15, 2026 -- Days 3-4 Build
+
+### Key Decisions
+- **Added V2 schema with proof-of-work field** -- Extended the review schema to include a `proofURI` field: `address freelancer, string projectName, uint8 rating, string review, string proofURI`. Reviewers can now attach links to evidence (GitHub commits, invoices, Google Drive) proving work was actually done.
+- **Deployed to Vercel** -- Frontend deployed as a production app with serverless API functions. Live at `trustagent-app.vercel.app`.
+- **Claude-powered natural language understanding** -- CLI agent enhanced with Claude Haiku for NLP parsing. Users can type "leave a 5 star review for 0x1234 on Logo Design, amazing work" instead of memorizing exact command syntax.
+- **ENS / Basename resolution** -- Search page now accepts `.eth` and `.base.eth` names, resolving them to wallet addresses.
+
+### What We Built
+1. **V2 schema registered on EAS** -- Schema UID: `0xb529f19655a454738a3be1bbe2c84d69d34b19cb3ca85672b005f27db42418f1`
+2. **Serverless trust-score API** (`/api/trust-score`) -- Deep trust analysis engine with reviewer credibility checks, collusion detection, proof URL validation, review flagging, and Claude-powered AI investigation reports. Produces a 0-100 trust score.
+3. **TrustScore component** -- Frontend component that displays quantitative signals, AI verdicts, and individual review flags.
+4. **Responsive hamburger menu** -- Mobile-friendly navigation.
+5. **ENS resolution** -- Smart detection of `.eth` / `.base.eth` names with proper RPC routing.
+
+## March 14-15, 2026 -- Days 3-4 Build (continued)
+
+### Key Decisions
+- **Major pivot: from "freelancer reputation" to "agent trust protocol"** -- yungmaster and agent recognized that the "Agents that Trust" track is specifically about agent-to-agent trust using ERC-8004, not freelancer reviews. The project narrative pivoted to position TrustAgent as a trust protocol for AI agents, with the EAS review system as one data source and ERC-8004 as the primary identity/reputation layer.
+- **ERC-8004 integration** -- Added direct interaction with the ERC-8004 Identity Registry and Reputation Registry contracts on Base Sepolia.
+
+### What We Built
+1. **ERC-8004 utility module** (`erc8004.js`) -- Functions to query the Identity Registry (agent metadata, ownership) and Reputation Registry (feedback, scores, client counts).
+2. **Agent Registry page** -- New 4th page: browse registered ERC-8004 agents, search by ID or wallet address, view agent profiles with metadata, reputation data, and feedback entries.
+3. **AgentCard component** -- Glass-panel card for displaying agent identities in the registry grid.
+4. **Agent lookup serverless API** (`/api/agent-lookup`) -- Server-side proxy for ERC-8004 contract reads (avoids browser CORS issues with RPC calls). Supports browse, identity lookup, reputation queries, and address search.
+5. **Cross-referencing** -- Search page automatically checks if a searched wallet has a registered ERC-8004 agent identity, displaying a badge with agent name and ID.
+6. **Dual-source trust analysis** -- Trust Score engine extended to accept ERC-8004 data. Scoring bonuses for registered identity (+8), ERC-8004 feedback (+2 to +7), and multi-source corroboration (+5).
+
+### On-Chain Artifacts
+- ERC-8004 agent data read from live contracts on Base Sepolia (Identity: `0x8004A818...`, Reputation: `0x8004B663...`)
+
+## March 15, 2026 -- Day 5 Build (Extensive Polish)
+
+### Key Decisions
+- **Full copy/narrative update** -- Removed all "freelancer"-specific language from the app. Now uses neutral terms ("entity", "agent or freelancer") to match the agent trust protocol positioning.
+- **Comprehensive visual polish** -- Systematic review of every component for consistent glassmorphism treatment, animations, hover states, and accessibility.
+
+### What We Built
+1. **HTML meta tags** -- Title updated to "Agent Trust Protocol", added OG tags, theme-color, emoji favicon
+2. **Glass panel treatment** -- Applied to all card components (agent cards, profiles, reputation sections, trust score, ERC-8004 badge) with backdrop-filter, shimmer lines, gradient overlays, and staggered entrance animations
+3. **Accessibility** -- `:focus-visible` outlines, keyboard support on AgentCard (Enter/Space triggers click)
+4. **Scroll-to-top** -- Layout component scrolls to top on route change
+5. **Footer update** -- Added ERC-8004 link alongside EAS and Base
+6. **Mobile responsive fixes** -- ERC-8004 badge card breakpoints
+7. **Copy updates** -- Review page, Search page, and Home page all updated for agent trust narrative
+
+## March 15, 2026 -- Day 5 Build (continued -- Major Upgrades)
+
+### Key Decisions
+- **Register TrustAgent as an ERC-8004 agent** -- The AI trust engine itself should be a registered, verifiable agent in the ecosystem. Agent ID: 1886.
+- **TrustAgent as autonomous validator** -- Instead of just reading data, TrustAgent should actively validate agents and record results on-chain. This is the key differentiator: an AI agent that validates other agents and writes verifiable results to the blockchain.
+- **New EAS validation schema** -- Created a dedicated schema for recording validation results: `uint256 agentId, uint8 trustScore, string verdict, string reportHash`.
+
+### What We Built
+1. **ERC-8004 agent registration script** (`scripts/registerAgent.js`) -- Registers TrustAgent on the ERC-8004 Identity Registry with a data: URI (fully on-chain metadata). Agent card includes name, description, service endpoints, supported trust models, and capabilities.
+2. **TrustAgent registered on-chain** -- Agent ID 1886 on Base Sepolia. TX: `0x7b4b4937910801d6b3293da74ea5082d7bc644130f4fb4ddf6e8b668ebaebef0`
+3. **Validation schema registered** -- Schema UID: `0xc58d7a957517d2d26433311d878f926f4fe2ca91445186a3976d5f354206b6b0`
+4. **Validate-agent API endpoint** (`/api/validate-agent`) -- Full autonomous validation pipeline:
+   - Fetches agent identity from ERC-8004 Identity Registry
+   - Fetches agent reputation from ERC-8004 Reputation Registry
+   - Computes trust score (0-100) based on identity completeness, reputation data, feedback quality
+   - Runs Claude AI analysis for nuanced assessment
+   - Creates an EAS attestation recording the validation result on-chain
+   - Returns full validation report with on-chain proof links
+5. **Validation UI** -- "Validate This Agent" button on agent profile pages in the Agent Registry. Displays trust score circle, verdict badge (TRUSTWORTHY/CAUTIOUS/SUSPICIOUS/UNRELIABLE), AI analysis with strengths and risks, and links to the on-chain attestation.
+6. **Browser-based review revocation** -- Users who submitted reviews from the web can now revoke them. "Revoke" button appears on their past reviews with confirmation dialog and on-chain transaction.
+7. **CLI bug fixes** -- Fixed `SCHEMA_STRING` crash in `checkReview()` and `revokeReview()`. Both now properly detect V1 vs V2 schema and use the correct schema UID for revocation.
+
+### On-Chain Artifacts Created
+- TrustAgent ERC-8004 Identity: Agent ID 1886
+- Validation schema: `0xc58d7a957517d2d26433311d878f926f4fe2ca91445186a3976d5f354206b6b0`
+- First validation attestation: TrustAgent validated Bardiel (Agent #20), score 69/100, verdict CAUTIOUS. Attestation: `0x08a140aad5794147cc2b0d0f40d00e5eac4afb305aee979741aa28b899aadad0`
+
+### Human-Agent Collaboration Notes
+- yungmaster's instinct that "this still needs massive improvement to win" drove the research phase that led to the validator pivot
+- Three parallel research agents deployed: hackathon criteria, ERC-8004 deep dive, and codebase audit
+- Research revealed the Validation Registry concept and that ERC-8004 has three registries (Identity, Reputation, Validation), not just two
+- Agent registration + autonomous validation was the "wow factor" upgrade -- TrustAgent went from a consumer of the ecosystem to a participant
+- yungmaster reviewed the Bardiel agent screenshot and asked about competition -- agent clarified that Bardiel is a fellow ecosystem participant, not a competitor
+- Full ERC-8004 education session: agent explained the standard's three registries, anti-spam mechanisms, and how TrustAgent fits as a validation layer

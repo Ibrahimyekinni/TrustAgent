@@ -12,9 +12,10 @@ export const SCHEMA_UID_V1 = "0x5d6661abb66715bfc01d1744f52f52594c1b01ed473d9fac
 // V2 schema: adds string proofURI
 export const SCHEMA_UID_V2 = "0xb529f19655a454738a3be1bbe2c84d69d34b19cb3ca85672b005f27db42418f1";
 
-// EAS contract ABI -- just the attest function
+// EAS contract ABI -- attest and revoke functions
 export const EAS_ABI = [
   "function attest((bytes32 schema, (address recipient, uint64 expirationTime, bool revocable, bytes32 refUID, bytes data, uint256 value) data)) external payable returns (bytes32)",
+  "function revoke((bytes32 schema, (bytes32 uid, uint256 value) data)) external payable",
 ];
 
 /**

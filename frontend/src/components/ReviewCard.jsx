@@ -1,6 +1,6 @@
 import Stars from "./Stars";
 
-export default function ReviewCard({ review }) {
+export default function ReviewCard({ review, onRevoke, revoking }) {
   const { projectName, rating, reviewText, proofURI, reviewer, date, revoked, uid } = review;
 
   return (
@@ -8,6 +8,16 @@ export default function ReviewCard({ review }) {
       <div className="review-card-header">
         <span className="review-project">{projectName}</span>
         {revoked && <span className="revoked-badge">Revoked</span>}
+        {onRevoke && !revoked && (
+          <button
+            className="revoke-btn"
+            onClick={() => onRevoke(uid)}
+            disabled={revoking}
+            title="Revoke this review on-chain"
+          >
+            {revoking ? "Revoking..." : "Revoke"}
+          </button>
+        )}
       </div>
       <Stars rating={rating} />
       <p className="review-text">{reviewText}</p>

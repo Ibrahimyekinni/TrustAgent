@@ -1,6 +1,6 @@
 # TrustAgent
 
-On-chain freelancer reputation system using attestations on Base.
+On-chain trust protocol for AI agents and freelancers. Validates agent identities, analyzes reputation across multiple sources, and records trust verdicts on the blockchain.
 
 **Live demo:** [trustagent-app.vercel.app](https://trustagent-app.vercel.app)
 
@@ -8,100 +8,133 @@ Built for [The Synthesis Hackathon](https://synthesis.md) (March 2026) -- Track:
 
 ## The Problem
 
-I'm a freelancer on Fiverr. I build automations for clients using tools like GoHighLevel, Manychat, HubSpot, n8n, and Make. My reputation -- my reviews, my ratings, my track record -- is everything. It's how I get new clients. It's how I charge more over time.
+How do you trust something without a face?
 
-But here's the thing: **my reputation is locked to Fiverr.** If Fiverr bans my account, shuts down, or changes their algorithm, my entire track record vanishes overnight. Years of work, gone. I don't own my reputation -- Fiverr does.
+AI agents are everywhere -- executing tasks, managing wallets, handling transactions. But there's no reliable way to verify if an agent is trustworthy before you interact with it. Centralized registries can be gamed. Self-reported credentials mean nothing. And once an agent burns you, there's no permanent record to warn others.
 
-And it's not just Fiverr. Every freelance platform works this way. Your reputation on Upwork doesn't transfer to Fiverr. Your Fiverr rep doesn't transfer to LinkedIn. You start from zero every time you join a new platform. The platforms love this because it keeps you locked in.
+The same problem exists for freelancers. Your reputation on Fiverr doesn't transfer to Upwork. Your Upwork rep doesn't move to LinkedIn. Platforms own your trust, not you.
 
-There's no way for a freelancer to build a portable, verifiable, platform-independent reputation. Until now.
+Trust should be portable, verifiable, and owned by the entity that earned it.
 
 ## The Solution
 
-TrustAgent is an AI agent (powered by Claude Code) that creates and verifies on-chain reputation attestations using EAS (Ethereum Attestation Service) on Base.
+TrustAgent is an AI-powered trust protocol that combines two on-chain systems:
 
-When a freelancer completes work:
+- **ERC-8004 (Trustless Agents)** -- The identity and reputation standard for AI agents on Base. Agents register their identity, receive feedback, and build verifiable track records.
+- **EAS (Ethereum Attestation Service)** -- Permanent, on-chain attestations for reviews, validation results, and trust verdicts that no platform can delete or modify.
 
-1. The client (or agent) issues an attestation on-chain: "Freelancer X completed Project Y, rated 5/5"
-2. That attestation is permanent, verifiable, and not controlled by any platform
-3. Any new platform, client, or employer can query that freelancer's on-chain reputation
-4. The freelancer owns their reputation -- it goes wherever they go
+TrustAgent itself is a registered AI agent (Agent #1886 on Base Sepolia) that autonomously validates other agents. It reads their identity, analyzes their reputation data, runs AI-powered trust analysis, and writes the validation result on-chain as proof.
 
-## Why This Matters
+## How It Works
 
-- **For freelancers:** Your reputation becomes an asset YOU own, not something a platform holds hostage
-- **For clients:** You can verify a freelancer's track record across all platforms, not just the one you're on
-- **For the ecosystem:** Trust becomes decentralized and portable, breaking platform lock-in
+1. **Register Identity** -- Agents register on the ERC-8004 Identity Registry with metadata (name, description, capabilities)
+2. **Build Reputation** -- Clients leave on-chain reviews via EAS attestations. Agents receive feedback through the ERC-8004 Reputation Registry
+3. **Get Validated** -- TrustAgent analyzes both data sources, computes a trust score (0-100), and records the verdict on-chain
+4. **Trust is Portable** -- Any agent, platform, or person can query on-chain reputation. No lock-in, no gatekeepers
 
 ## Features
 
-### CLI Agent (`npm run agent`)
+### Web Frontend (4 pages)
 
-An interactive command-line agent that handles all blockchain complexity behind simple commands:
+- **Home** -- Landing page explaining the agent trust protocol
+- **Search** -- Look up any wallet address to see their full reputation report with trust score analysis, star ratings, review text, and blockchain verification links. Automatically cross-references ERC-8004 agent identities
+- **Leave a Review** -- Connect your wallet and submit an on-chain review as an EAS attestation. Supports proof-of-work links (GitHub, invoices, Google Drive). Revoke your own past reviews
+- **Agent Registry** -- Browse and search ERC-8004 registered agents. View agent profiles with identity metadata, reputation data, and feedback. Run autonomous validation with one click
+
+### Trust Score Engine
+
+Deep trust analysis that goes beyond simple averages:
+
+- **Reviewer credibility checks** -- Are reviewers real accounts or sock puppets?
+- **Collusion detection** -- Are the same wallets reviewing each other?
+- **Proof validation** -- Did the reviewer attach evidence of completed work?
+- **ERC-8004 cross-referencing** -- Does the entity have a registered agent identity? What does their on-chain feedback look like?
+- **AI investigation** -- Claude-powered analysis producing strengths, risks, and a final recommendation
+- **Verdict system** -- TRUSTWORTHY / CAUTIOUS / SUSPICIOUS / UNRELIABLE with a 0-100 score
+
+### Autonomous Agent Validation
+
+TrustAgent (Agent #1886) validates other ERC-8004 agents:
+
+1. Fetches agent identity from the Identity Registry
+2. Fetches reputation and feedback from the Reputation Registry
+3. Computes a trust score based on identity completeness, feedback quality, and data volume
+4. Runs Claude AI analysis for nuanced assessment
+5. Creates an on-chain EAS attestation recording the validation result permanently
+
+### CLI Agent (`npm run agent`)
 
 | Command | What it does |
 |---------|-------------|
-| `review <address> <project> <rating> <review>` | Create an on-chain review for a freelancer |
-| `reputation <address>` | See ALL reviews and average rating for a freelancer |
-| `check <attestationUID>` | Look up a single review by its attestation ID |
-| `revoke <attestationUID>` | Revoke a review you created (only your own) |
+| `review <address> <project> <rating> <review>` | Create an on-chain review |
+| `reputation <address>` | See all reviews and average rating |
+| `check <attestationUID>` | Look up a single review by attestation ID |
+| `revoke <attestationUID>` | Revoke a review you created |
 | `help` | Show available commands |
 
-Key behaviors:
-- **Claude-powered NLP** -- When an Anthropic API key is set, the agent uses Claude to understand truly freeform input. Falls back to regex pattern matching without the key
-- **Revocation-aware scoring** -- Revoked reviews are visible (transparency) but excluded from the average rating
-- **Ownership checks** -- Before revoking, the agent verifies your wallet matches the original attester. EAS enforces this at the smart contract level too, but we check client-side first for a clear error message instead of a confusing blockchain error
-- **Input validation** -- Validates wallet addresses, rating bounds (1-5), and attestation UIDs before sending transactions
-
-### Web Frontend (`frontend/`)
-
-A React + Vite web app with 3 dedicated pages (Home, Search, Review) and a neon glassmorphism design. No backend, no database, no API keys -- the browser talks directly to the EAS GraphQL API and Base Sepolia. The blockchain IS the database.
-
-- **Home** -- Landing page explaining the problem and how TrustAgent solves it
-- **Search** -- Paste any wallet address to see their full reputation report with star ratings, review text, and blockchain verification links
-- **Leave a Review** -- Connect your wallet (MetaMask, Coinbase Wallet, etc.) and submit an on-chain review directly from the browser
-- Each review links to its on-chain proof on EASScan -- click to verify independently
-- Revoked reviews are visually marked and excluded from the score
-- ABI decoding done manually in the browser -- no heavy SDK imports
+- Claude-powered NLP for freeform input
+- V1/V2 schema detection (with and without proof-of-work links)
+- Revocation-aware scoring
+- Ownership checks before revocation
 
 ## Architecture
 
 ```
-                    ┌─────────────────────┐
-                    │   Base Sepolia (L2)  │
-                    │                     │
-                    │  EAS Smart Contract  │
-                    │  (attestations live  │
-                    │   here permanently)  │
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────┴──────────┐
-                    │  EAS GraphQL Indexer │
-                    │  (search engine for  │
-                    │   attestations)      │
-                    └──────┬───────┬──────┘
-                           │       │
-              ┌────────────┘       └────────────┐
-              │                                 │
-     ┌────────┴────────┐              ┌─────────┴────────┐
-     │   CLI Agent      │              │   Web Frontend    │
-     │                  │              │   (React + Vite)  │
-     │  Write reviews   │              │  Read reviews     │
-     │  Read reviews    │              │  Write reviews    │
-     │  Revoke reviews  │              │  (browser wallet) │
-     │  (private key)   │              │                   │
-     └─────────────────┘              └───────────────────┘
+                    ┌──────────────────────────┐
+                    │     Base Sepolia (L2)     │
+                    │                          │
+                    │  EAS Smart Contract       │
+                    │  ERC-8004 Identity Reg.   │
+                    │  ERC-8004 Reputation Reg. │
+                    └─────────────┬────────────┘
+                                  │
+                    ┌─────────────┴────────────┐
+                    │   EAS GraphQL Indexer     │
+                    └──────┬──────────┬────────┘
+                           │          │
+              ┌────────────┘          └─────────────┐
+              │                                     │
+     ┌────────┴────────┐               ┌────────────┴───────────┐
+     │   CLI Agent      │               │   Web Frontend          │
+     │                  │               │   (React + Vite)        │
+     │  Write reviews   │               │                         │
+     │  Read reviews    │               │  Read reviews           │
+     │  Revoke reviews  │               │  Write reviews          │
+     │  (private key)   │               │  Trust score analysis   │
+     └─────────────────┘               │  Agent registry browse  │
+                                        │  Agent validation       │
+                                        │  (browser wallet)       │
+                                        └─────────────────────────┘
+                                                    │
+                                        ┌───────────┴───────────┐
+                                        │  Vercel Serverless     │
+                                        │                        │
+                                        │  /api/trust-score      │
+                                        │  /api/agent-lookup     │
+                                        │  /api/validate-agent   │
+                                        └────────────────────────┘
 ```
-
-Both the CLI agent and the web frontend can read and write reviews. The CLI uses a private key from `.env` for server-side signing. The frontend connects to the user's browser wallet (MetaMask, Coinbase Wallet, etc.) for client-side signing. Both talk to the same EAS contracts and GraphQL indexer on Base Sepolia.
 
 ## On-Chain Artifacts
 
-Everything below is live on Base Sepolia right now. Click the links to verify independently.
+Everything below is live on Base Sepolia. Click to verify independently.
 
-- **Schema:** [`0x5d6661...70ce30`](https://base-sepolia.easscan.org/schema/view/0x5d6661abb66715bfc01d1744f52f52594c1b01ed473d9facb2825988ef70ce30) -- Our review "form" registered on-chain: `address freelancer, string projectName, uint8 rating, string review`
-- **Test attestation 1:** [`0x7bd386...2779`](https://base-sepolia.easscan.org/attestation/view/0x7bd386bab4474368720ae19737fd65d31cc9597cf82bd061192291437c5c2779) -- 5-star Manychat Automation review
-- **Test attestation 2:** [`0x6956ff...0236`](https://base-sepolia.easscan.org/attestation/view/0x6956ffed6a2c4d02fa0e919dfc49909075e9174a206ea346a9319bcd83740236) -- 4-star GHL Automation review (created via CLI agent)
+### TrustAgent Identity
+- **ERC-8004 Agent #1886** -- TrustAgent registered as a validator agent on the Identity Registry
+
+### Schemas
+- **V1 Review Schema:** [`0x5d6661...70ce30`](https://base-sepolia.easscan.org/schema/view/0x5d6661abb66715bfc01d1744f52f52594c1b01ed473d9facb2825988ef70ce30) -- `address freelancer, string projectName, uint8 rating, string review`
+- **V2 Review Schema:** [`0xb529f1...18f1`](https://base-sepolia.easscan.org/schema/view/0xb529f19655a454738a3be1bbe2c84d69d34b19cb3ca85672b005f27db42418f1) -- Adds `string proofURI` for proof-of-work links
+- **Validation Schema:** [`0xc58d7a...6b0`](https://base-sepolia.easscan.org/schema/view/0xc58d7a957517d2d26433311d878f926f4fe2ca91445186a3976d5f354206b6b0) -- `uint256 agentId, uint8 trustScore, string verdict, string reportHash`
+
+### Sample Attestations
+- **Test review (5-star):** [`0x7bd386...2779`](https://base-sepolia.easscan.org/attestation/view/0x7bd386bab4474368720ae19737fd65d31cc9597cf82bd061192291437c5c2779) -- Manychat Automation
+- **Test review (4-star):** [`0x6956ff...0236`](https://base-sepolia.easscan.org/attestation/view/0x6956ffed6a2c4d02fa0e919dfc49909075e9174a206ea346a9319bcd83740236) -- GHL Automation
+- **Validation attestation:** [`0x08a140...dad0`](https://base-sepolia.easscan.org/attestation/view/0x08a140aad5794147cc2b0d0f40d00e5eac4afb305aee979741aa28b899aadad0) -- TrustAgent validated Bardiel (Agent #20), score 69/100, verdict CAUTIOUS
+
+### Demo Data
+- 5 active reviews, 1 revoked, average 4.4/5 stars
+- Demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
 
 ## Try It Yourself
 
@@ -113,49 +146,43 @@ npm install
 npm run dev
 ```
 
-Then open `http://127.0.0.1:3000/` and try the demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
+Open `http://127.0.0.1:3000/` and try:
+- Search the demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
+- Browse the Agent Registry
+- Validate an agent
 
 ### CLI Agent
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Create a .env file with your wallet and schema
-#    (see .env.example for the format)
 cp .env.example .env
-
-# 3. Run the agent
+# Fill in your .env values
 npm run agent
-
-# 4. Try these commands:
-#    reputation 0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa
-#    review 0x<address> "Project Name" 5 "Great work"
-#    check 0x<attestationUID>
 ```
 
 ## Tech Stack
 
 | Layer | Tool | Why |
 |-------|------|-----|
-| Agent harness | Claude Code | Approved by hackathon, handles all code and blockchain interaction |
-| Agent NLP | Claude API (Haiku) | Powers natural language understanding in the CLI agent |
-| Blockchain | Base (Ethereum L2) | Cheap transactions, EAS already deployed |
-| Attestations | EAS (Ethereum Attestation Service) | Battle-tested, no custom contracts needed |
-| Smart contract interaction | ethers.js v6 | Industry standard for Ethereum |
-| Attestation encoding/decoding | @ethereum-attestation-service/eas-sdk | Schema registration and ABI encoding |
-| Frontend | React + Vite | 3-page SPA with neon glassmorphism design |
-| Dev tooling | Hardhat | Compilation and deployment |
+| Agent harness | Claude Code | Hackathon-approved, handles all code and blockchain interaction |
+| Trust analysis | Claude API (Haiku) | Powers trust score engine and validation reports |
+| Blockchain | Base (Ethereum L2) | Cheap transactions, EAS and ERC-8004 deployed |
+| Agent identity | ERC-8004 Identity Registry | On-chain agent passports with metadata |
+| Agent reputation | ERC-8004 Reputation Registry | Feedback and scoring for registered agents |
+| Attestations | EAS (Ethereum Attestation Service) | Permanent on-chain reviews and validation records |
+| Smart contracts | ethers.js v6 | Industry standard for Ethereum interaction |
+| Frontend | React + Vite | 4-page SPA with neon glassmorphism design |
+| Serverless APIs | Vercel Functions | Trust score, agent lookup, and validation endpoints |
 
-## Built By Humans, For Humans
+## Human-Agent Collaboration
 
-This isn't a project where the agent does everything and the human watches. The freelancer stays in control. The agent is the tool that does the on-chain work -- issuing attestations, querying reputation, interacting with smart contracts -- but the human decides what gets attested, who to trust, and when to act.
+This project was built by a human with zero blockchain experience directing an AI agent (Claude Code). Every strategic decision was made by the human. Every line of code was written by the agent.
 
-This entire project was built by a human with zero blockchain experience directing an AI agent (Claude Code). The [conversation log](docs/conversationLog.md) shows exactly how that collaboration worked -- the brainstorms, the pivots, the breakthroughs. A quiz system was used after each build phase to make sure the human understood what was being built, not just copy-pasting.
+The [conversation log](docs/conversationLog.md) documents the full collaboration -- the brainstorms, the pivots, the breakthroughs, and the quiz sessions used to ensure the human understood what was being built.
 
 ## Team
 
-- **Ibrahim (yungmaster)** -- AI/automation expert, project vision and strategy, agent logic. Zero blockchain experience before this hackathon.
+- **Ibrahim (yungmaster)** -- AI/automation expert, project vision and strategy. Zero blockchain experience before this hackathon.
 - **Claude Code** -- AI agent handling all code, blockchain interactions, and technical execution.
 
 ## License

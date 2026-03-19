@@ -107,6 +107,63 @@ export default async function handler(req, res) {
         if (r) agents.push(r);
       }
 
+      // Fetch validation attestations to attach badges
+      const VALIDATION_SCHEMA = "0xc58d7a957517d2d26433311d878f926f4fe2ca91445186a3976d5f354206b6b0";
+      const TRUSTAGENT_WALLET = "0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa";
+      const EAS_GRAPHQL = "https://base-sepolia.easscan.org/graphql";
+
+      try {
+        const valQuery = `
+          query GetAllValidations($where: AttestationWhereInput) {
+            attestations(where: $where, orderBy: [{ time: desc }]) {
+              id
+              recipient
+              data
+            }
+          }
+        `;
+        const valRes = await fetch(EAS_GRAPHQL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: valQuery,
+            variables: {
+              where: {
+                schemaId: { equals: VALIDATION_SCHEMA },
+                attester: { equals: TRUSTAGENT_WALLET },
+                revocationTime: { equals: 0 },
+              },
+            },
+          }),
+        });
+        const valData = await valRes.json();
+        if (valData.data?.attestations) {
+          // Build lookup: latest validation per recipient
+          const validationMap = {};
+          for (const a of valData.data.attestations) {
+            const addr = a.recipient.toLowerCase();
+            if (validationMap[addr]) continue; // already have latest
+            try {
+              const { AbiCoder } = ethers;
+              const decoded = AbiCoder.defaultAbiCoder().decode(
+                ["uint256", "uint8", "string", "string"],
+                a.data
+              );
+              validationMap[addr] = {
+                score: Number(decoded[1]),
+                verdict: decoded[2],
+                uid: a.id,
+              };
+            } catch { /* skip */ }
+          }
+          // Attach to agents
+          for (const agent of agents) {
+            const v = validationMap[agent.owner?.toLowerCase()];
+            if (v) agent.validation = v;
+          }
+        }
+      } catch { /* non-critical, badges just won't show */ }
+
       return res.status(200).json({ agents: agents.sort((a, b) => a.agentId - b.agentId) });
     }
 
@@ -175,6 +232,30 @@ export default async function handler(req, res) {
         }
       }
 
+      // Tag-based multi-dimensional reputation
+      const dimensions = [];
+      const uniqueTags = new Set();
+      for (const fb of feedback) {
+        if (fb.tag1 && !fb.revoked) uniqueTags.add(fb.tag1);
+      }
+
+      if (uniqueTags.size > 0) {
+        const tagPromises = [...uniqueTags].slice(0, 8).map(async (tag) => {
+          try {
+            const tagSummary = await reputation.getSummary(id, clients, tag, "");
+            const tagCount = Number(tagSummary.count);
+            if (tagCount === 0) return null;
+            const tagDecimals = Number(tagSummary.summaryValueDecimals);
+            const tagAvg = Number(tagSummary.summaryValue) / (tagCount * Math.pow(10, tagDecimals));
+            return { tag, count: tagCount, avgScore: Math.round(tagAvg * 100) / 100 };
+          } catch { return null; }
+        });
+        const tagResults = await Promise.all(tagPromises);
+        for (const r of tagResults) {
+          if (r) dimensions.push(r);
+        }
+      }
+
       return res.status(200).json({
         agentId: id,
         feedbackCount,
@@ -182,6 +263,7 @@ export default async function handler(req, res) {
         clientCount: clients.length,
         clients,
         feedback,
+        dimensions,
       });
     }
 
@@ -219,7 +301,128 @@ export default async function handler(req, res) {
       return res.status(200).json({ found: false });
     }
 
-    return res.status(400).json({ error: "Invalid action. Use: browse, identity, reputation, search" });
+    // ── Stats: live on-chain stats for the Home page ──
+    if (action === "stats") {
+      const VALIDATION_SCHEMA = "0xc58d7a957517d2d26433311d878f926f4fe2ca91445186a3976d5f354206b6b0";
+      const SCHEMA_UID_V1 = "0x5d6661abb66715bfc01d1744f52f52594c1b01ed473d9facb2825988ef70ce30";
+      const SCHEMA_UID_V2 = "0xb529f19655a454738a3be1bbe2c84d69d34b19cb3ca85672b005f27db42418f1";
+      const TRUSTAGENT_WALLET = "0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa";
+      const EAS_GRAPHQL = "https://base-sepolia.easscan.org/graphql";
+
+      const countQuery = `
+        query CountAttestations($where: AttestationWhereInput) {
+          aggregateAttestation(where: $where) { _count { id } }
+        }
+      `;
+
+      const recipientsQuery = `
+        query GetRecipients($where: AttestationWhereInput) {
+          attestations(where: $where) { recipient }
+        }
+      `;
+
+      const [v1Count, v2Count, valCount, v1Recipients, v2Recipients] = await Promise.all([
+        fetch(EAS_GRAPHQL, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: countQuery, variables: { where: { schemaId: { equals: SCHEMA_UID_V1 }, revocationTime: { equals: 0 } } } }),
+        }).then(r => r.json()),
+        fetch(EAS_GRAPHQL, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: countQuery, variables: { where: { schemaId: { equals: SCHEMA_UID_V2 }, revocationTime: { equals: 0 } } } }),
+        }).then(r => r.json()),
+        fetch(EAS_GRAPHQL, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: countQuery, variables: { where: { schemaId: { equals: VALIDATION_SCHEMA }, attester: { equals: TRUSTAGENT_WALLET }, revocationTime: { equals: 0 } } } }),
+        }).then(r => r.json()),
+        fetch(EAS_GRAPHQL, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: recipientsQuery, variables: { where: { schemaId: { equals: SCHEMA_UID_V1 }, revocationTime: { equals: 0 } } } }),
+        }).then(r => r.json()),
+        fetch(EAS_GRAPHQL, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: recipientsQuery, variables: { where: { schemaId: { equals: SCHEMA_UID_V2 }, revocationTime: { equals: 0 } } } }),
+        }).then(r => r.json()),
+      ]);
+
+      const totalReviews = (v1Count.data?.aggregateAttestation?._count?.id || 0) + (v2Count.data?.aggregateAttestation?._count?.id || 0);
+      const totalValidations = valCount.data?.aggregateAttestation?._count?.id || 0;
+
+      const allRecipients = new Set();
+      for (const a of (v1Recipients.data?.attestations || [])) allRecipients.add(a.recipient.toLowerCase());
+      for (const a of (v2Recipients.data?.attestations || [])) allRecipients.add(a.recipient.toLowerCase());
+      const uniqueEntities = allRecipients.size;
+
+      res.setHeader("Cache-Control", "s-maxage=120, stale-while-revalidate=60");
+      return res.status(200).json({ totalReviews, totalValidations, uniqueEntities, totalAttestations: totalReviews + totalValidations });
+    }
+
+    // ── Validations: fetch TrustAgent validation history for an address ──
+    if (action === "validations" && address) {
+      const VALIDATION_SCHEMA = "0xc58d7a957517d2d26433311d878f926f4fe2ca91445186a3976d5f354206b6b0";
+      const TRUSTAGENT_WALLET = "0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa";
+      const EAS_GRAPHQL = "https://base-sepolia.easscan.org/graphql";
+
+      const query = `
+        query GetValidations($where: AttestationWhereInput) {
+          attestations(where: $where, orderBy: [{ time: desc }]) {
+            id
+            time
+            revocationTime
+            data
+            recipient
+          }
+        }
+      `;
+
+      const gqlRes = await fetch(EAS_GRAPHQL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          variables: {
+            where: {
+              schemaId: { equals: VALIDATION_SCHEMA },
+              attester: { equals: TRUSTAGENT_WALLET },
+              recipient: { equals: address },
+            },
+          },
+        }),
+      });
+
+      const gqlData = await gqlRes.json();
+      if (gqlData.errors) throw new Error(gqlData.errors[0].message);
+
+      const validations = (gqlData.data.attestations || [])
+        .filter((a) => a.revocationTime === 0 || a.revocationTime === "0")
+        .map((a) => {
+          let agentId = 0, trustScore = 0, verdict = "", reportHash = "";
+          try {
+            const { AbiCoder } = ethers;
+            const decoded = AbiCoder.defaultAbiCoder().decode(
+              ["uint256", "uint8", "string", "string"],
+              a.data
+            );
+            agentId = Number(decoded[0]);
+            trustScore = Number(decoded[1]);
+            verdict = decoded[2];
+            reportHash = decoded[3];
+          } catch {
+            // Skip decode errors
+          }
+          return {
+            uid: a.id,
+            date: new Date(parseInt(a.time) * 1000).toISOString(),
+            agentId,
+            trustScore,
+            verdict,
+            reportHash,
+          };
+        });
+
+      return res.status(200).json({ validations });
+    }
+
+    return res.status(400).json({ error: "Invalid action. Use: browse, identity, reputation, search, validations" });
   } catch (err) {
     return res.status(500).json({ error: err.message || "Internal error" });
   }

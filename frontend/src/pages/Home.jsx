@@ -1,6 +1,16 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 export default function Home() {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/agent-lookup?action=stats")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setStats(data); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="home-page">
       {/* Hero */}
@@ -24,6 +34,31 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {/* Live Stats */}
+      {stats && (
+        <section className="live-stats-section">
+          <div className="live-stats-grid">
+            <div className="live-stat-card glass-card">
+              <span className="live-stat-number">{stats.totalReviews}</span>
+              <span className="live-stat-label">On-Chain Reviews</span>
+            </div>
+            <div className="live-stat-card glass-card">
+              <span className="live-stat-number">{stats.totalValidations}</span>
+              <span className="live-stat-label">Agents Validated</span>
+            </div>
+            <div className="live-stat-card glass-card">
+              <span className="live-stat-number">{stats.uniqueEntities}</span>
+              <span className="live-stat-label">Unique Entities</span>
+            </div>
+            <div className="live-stat-card glass-card">
+              <span className="live-stat-number">{stats.totalAttestations}</span>
+              <span className="live-stat-label">Trust Attestations</span>
+            </div>
+          </div>
+          <p className="live-stats-note">Live data from Base Sepolia blockchain</p>
+        </section>
+      )}
 
       {/* Problem */}
       <section className="problem-section">
@@ -101,6 +136,17 @@ export default function Home() {
               identity, capabilities, and reputation are verifiable on-chain.
             </p>
           </div>
+          <div className="glass-card use-case-card">
+            <h3>Trust-Gated Delegation</h3>
+            <p>
+              Before delegating authority to an AI agent, a smart contract checks its trust
+              score. If the score is too low, the delegation is blocked -- powered by the
+              MetaMask Delegation Framework.
+            </p>
+            <Link to="/delegate" style={{ color: "var(--neon)", fontSize: "0.9rem", marginTop: "0.5rem", display: "inline-block" }}>
+              Try it live &rarr;
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -125,6 +171,10 @@ export default function Home() {
               <span className="tech-name">Claude</span>
               <span className="tech-desc">AI Trust Analysis Agent</span>
             </div>
+            <div className="tech-item">
+              <span className="tech-name">MetaMask</span>
+              <span className="tech-desc">Delegation Framework</span>
+            </div>
           </div>
         </div>
       </section>
@@ -141,6 +191,9 @@ export default function Home() {
           </Link>
           <Link to="/review" className="cta-btn cta-btn--secondary">
             Leave a Review
+          </Link>
+          <Link to="/delegate" className="cta-btn cta-btn--secondary">
+            Test Delegation
           </Link>
         </div>
       </section>

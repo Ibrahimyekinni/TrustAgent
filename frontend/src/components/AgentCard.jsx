@@ -1,5 +1,6 @@
 export default function AgentCard({ agent, onClick }) {
   const hasImage = agent.image && !agent.image.includes("localhost");
+  const v = agent.validation;
 
   return (
     <div
@@ -9,6 +10,11 @@ export default function AgentCard({ agent, onClick }) {
       role="button"
       tabIndex={0}
     >
+      {v && (
+        <div className={`agent-card-badge agent-card-badge--${v.verdict.toLowerCase()}`} title={`${v.verdict} -- ${v.score}%`}>
+          {v.score}%
+        </div>
+      )}
       <div className="agent-card-header">
         {hasImage ? (
           <img

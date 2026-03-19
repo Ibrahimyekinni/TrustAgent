@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import Search from "./pages/Search";
 import Review from "./pages/Review";
 import AgentRegistry from "./pages/AgentRegistry";
+import Delegate from "./pages/Delegate";
+import Activity from "./pages/Activity";
 
 export default function App() {
   return (
@@ -12,7 +14,9 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="search" element={<Search />} />
         <Route path="agents" element={<AgentRegistry />} />
+        <Route path="activity" element={<Activity />} />
         <Route path="review" element={<Review />} />
+        <Route path="delegate" element={<Delegate />} />
       </Route>
     </Routes>
   );

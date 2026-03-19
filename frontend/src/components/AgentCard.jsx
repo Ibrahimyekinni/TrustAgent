@@ -10,11 +10,6 @@ export default function AgentCard({ agent, onClick }) {
       role="button"
       tabIndex={0}
     >
-      {v && (
-        <div className={`agent-card-badge agent-card-badge--${v.verdict.toLowerCase()}`} title={`${v.verdict} -- ${v.score}%`}>
-          {v.score}%
-        </div>
-      )}
       <div className="agent-card-header">
         {hasImage ? (
           <img
@@ -32,9 +27,16 @@ export default function AgentCard({ agent, onClick }) {
           <h4 className="agent-card-name">{agent.name}</h4>
           <span className="agent-card-id">ID: {agent.agentId}</span>
         </div>
-        <span className={`agent-card-status ${agent.active ? "agent-card-status--active" : "agent-card-status--inactive"}`}>
-          {agent.active ? "Active" : "Inactive"}
-        </span>
+        <div className="agent-card-badges">
+          {v && (
+            <div className={`agent-card-badge agent-card-badge--${v.verdict.toLowerCase()}`} title={`${v.verdict} -- ${v.score}%`}>
+              {v.score}%
+            </div>
+          )}
+          <span className={`agent-card-status ${agent.active ? "agent-card-status--active" : "agent-card-status--inactive"}`}>
+            {agent.active ? "Active" : "Inactive"}
+          </span>
+        </div>
       </div>
       {agent.description && (
         <p className="agent-card-desc">

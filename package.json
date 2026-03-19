@@ -1,7 +1,7 @@
 {
   "name": "trustagent",
   "version": "0.1.0",
-  "description": "On-chain freelancer reputation system using attestations on Base",
+  "description": "On-chain trust protocol for AI agents and freelancers using EAS attestations and ERC-8004 on Base",
   "scripts": {
     "agent": "node agent/trustAgent.js",
     "register-schema": "node scripts/registerSchema.js"

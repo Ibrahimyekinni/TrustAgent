@@ -18,10 +18,11 @@ Trust should be portable, verifiable, and owned by the entity that earned it.
 
 ## The Solution
 
-TrustAgent is an AI-powered trust protocol that combines two on-chain systems:
+TrustAgent is an AI-powered trust protocol that combines three on-chain systems:
 
 - **ERC-8004 (Trustless Agents)** -- The identity and reputation standard for AI agents on Base. Agents register their identity, receive feedback, and build verifiable track records.
 - **EAS (Ethereum Attestation Service)** -- Permanent, on-chain attestations for reviews, validation results, and trust verdicts that no platform can delete or modify.
+- **MetaMask Delegation Framework** -- Trust-gated delegation via a custom TrustEnforcer smart contract. Before an agent can receive delegated authority, the enforcer reads their EAS attestation on-chain and blocks the delegation if the trust score is too low.
 
 TrustAgent itself is a registered AI agent (Agent #1886 on Base Sepolia) that autonomously validates other agents. It reads their identity, analyzes their reputation data, runs AI-powered trust analysis, and writes the validation result on-chain as proof.
 
@@ -29,17 +30,20 @@ TrustAgent itself is a registered AI agent (Agent #1886 on Base Sepolia) that au
 
 1. **Register Identity** -- Agents register on the ERC-8004 Identity Registry with metadata (name, description, capabilities)
 2. **Build Reputation** -- Clients leave on-chain reviews via EAS attestations. Agents receive feedback through the ERC-8004 Reputation Registry
-3. **Get Validated** -- TrustAgent analyzes both data sources, computes a trust score (0-100), and records the verdict on-chain
-4. **Trust is Portable** -- Any agent, platform, or person can query on-chain reputation. No lock-in, no gatekeepers
+3. **Get Validated** -- TrustAgent analyzes both data sources, computes a trust score (0-100%), and records the verdict on-chain
+4. **Trust-Gated Delegation** -- The TrustEnforcer smart contract reads the validation attestation and blocks delegation if the trust score is below the threshold
+5. **Trust is Portable** -- Any agent, platform, or person can query on-chain reputation. No lock-in, no gatekeepers
 
 ## Features
 
-### Web Frontend (4 pages)
+### Web Frontend (6 pages)
 
-- **Home** -- Landing page explaining the agent trust protocol
-- **Search** -- Look up any wallet address to see their full reputation report with trust score analysis, star ratings, review text, and blockchain verification links. Automatically cross-references ERC-8004 agent identities
+- **Home** -- Landing page with live on-chain stats (total reviews, agents validated, unique entities, trust attestations) pulled directly from the blockchain
+- **Search** -- Look up any wallet address or ENS/Basename to see their full reputation report with trust score analysis, star ratings, review text, and blockchain verification links. Automatically cross-references ERC-8004 agent identities
+- **Agent Registry** -- Browse and search ERC-8004 registered agents. Agent cards show trust score badges for validated agents. Agent profiles display identity metadata, multi-dimensional reputation (tag-based ERC-8004 queries), validation history with past scores, and one-click autonomous validation
+- **Activity** -- TrustAgent's full validation track record. Summary stats (total validated, average score, verdict distribution) and a complete list of every validation attestation with on-chain proof links
 - **Leave a Review** -- Connect your wallet and submit an on-chain review as an EAS attestation. Supports proof-of-work links (GitHub, invoices, Google Drive). Revoke your own past reviews
-- **Agent Registry** -- Browse and search ERC-8004 registered agents. View agent profiles with identity metadata, reputation data, and feedback. Run autonomous validation with one click
+- **Delegate** -- Trust-gated delegation demo powered by the MetaMask Delegation Framework. Validate an agent, set a minimum trust threshold, and test whether the TrustEnforcer smart contract approves or blocks the delegation in real time. Includes composable caveats visualization showing how TrustEnforcer stacks with built-in framework enforcers (TimestampEnforcer, LimitedCallsEnforcer, AllowedTargetsEnforcer)
 
 ### Trust Score Engine
 
@@ -50,17 +54,38 @@ Deep trust analysis that goes beyond simple averages:
 - **Proof validation** -- Did the reviewer attach evidence of completed work?
 - **ERC-8004 cross-referencing** -- Does the entity have a registered agent identity? What does their on-chain feedback look like?
 - **AI investigation** -- Claude-powered analysis producing strengths, risks, and a final recommendation
-- **Verdict system** -- TRUSTWORTHY / CAUTIOUS / SUSPICIOUS / UNRELIABLE with a 0-100 score
+- **Verdict system** -- TRUSTWORTHY / CAUTIOUS / SUSPICIOUS / UNRELIABLE with a 0-100% score
+
+### Multi-Dimensional Reputation (ERC-8004 Tag-Based)
+
+TrustAgent uses ERC-8004's tag-based reputation system for granular analysis:
+
+- Queries `getSummary()` with individual tags (quality, speed, reliability, etc.) instead of just empty strings
+- Displays per-dimension reputation bars on agent profiles
+- Feeds dimensional data into the AI analysis for nuanced reports ("strong on quality, low on communication")
+- Most projects skip tag-based queries entirely -- TrustAgent uses them for deeper ERC-8004 integration
 
 ### Autonomous Agent Validation
 
 TrustAgent (Agent #1886) validates other ERC-8004 agents:
 
 1. Fetches agent identity from the Identity Registry
-2. Fetches reputation and feedback from the Reputation Registry
-3. Computes a trust score based on identity completeness, feedback quality, and data volume
-4. Runs Claude AI analysis for nuanced assessment
+2. Fetches reputation and feedback from the Reputation Registry, including tag-based dimensional data
+3. Computes a trust score based on identity completeness, positive feedback ratio, and data volume
+4. Runs Claude AI analysis with multi-dimensional reputation data for nuanced assessment
 5. Creates an on-chain EAS attestation recording the validation result permanently
+6. Validation history is tracked and displayed on agent profiles with past scores and EASScan links
+
+### Trust-Gated Delegation (MetaMask Delegation Framework)
+
+TrustEnforcer is a custom caveat enforcer for the MetaMask Delegation Framework:
+
+1. A delegator sets a minimum trust score threshold
+2. When someone tries to redeem the delegation, TrustEnforcer reads the EAS attestation on-chain
+3. Validates: correct schema, trusted attester (TrustAgent), not revoked, trust score >= threshold
+4. If any check fails, the delegation is blocked at the smart contract level
+5. The demo page lets you test this flow end-to-end with real on-chain data
+6. Composable caveats section demonstrates how TrustEnforcer stacks with built-in MetaMask enforcers (TimestampEnforcer, LimitedCallsEnforcer, AllowedTargetsEnforcer) for multi-layered permission controls
 
 ### CLI Agent (`npm run agent`)
 
@@ -86,6 +111,7 @@ TrustAgent (Agent #1886) validates other ERC-8004 agents:
                     │  EAS Smart Contract       │
                     │  ERC-8004 Identity Reg.   │
                     │  ERC-8004 Reputation Reg. │
+                    │  TrustEnforcer (Caveat)   │
                     └─────────────┬────────────┘
                                   │
                     ┌─────────────┴────────────┐
@@ -98,11 +124,15 @@ TrustAgent (Agent #1886) validates other ERC-8004 agents:
      │   CLI Agent      │               │   Web Frontend          │
      │                  │               │   (React + Vite)        │
      │  Write reviews   │               │                         │
-     │  Read reviews    │               │  Read reviews           │
-     │  Revoke reviews  │               │  Write reviews          │
+     │  Read reviews    │               │  Live on-chain stats    │
+     │  Revoke reviews  │               │  Read/write reviews     │
      │  (private key)   │               │  Trust score analysis   │
-     └─────────────────┘               │  Agent registry browse  │
-                                        │  Agent validation       │
+     └─────────────────┘               │  Agent registry + badges│
+                                        │  Multi-dim reputation   │
+                                        │  Validation history     │
+                                        │  Activity track record  │
+                                        │  Trust-gated delegation │
+                                        │  Composable caveats     │
                                         │  (browser wallet)       │
                                         └─────────────────────────┘
                                                     │
@@ -112,6 +142,7 @@ TrustAgent (Agent #1886) validates other ERC-8004 agents:
                                         │  /api/trust-score      │
                                         │  /api/agent-lookup     │
                                         │  /api/validate-agent   │
+                                        │  /api/delegation-demo  │
                                         └────────────────────────┘
 ```
 
@@ -122,6 +153,9 @@ Everything below is live on Base Sepolia. Click to verify independently.
 ### TrustAgent Identity
 - **ERC-8004 Agent #1886** -- TrustAgent registered as a validator agent on the Identity Registry
 
+### Smart Contracts
+- **TrustEnforcer:** [`0x3Fc881...61bc`](https://sepolia.basescan.org/address/0x3Fc881e22190B672d4B9621e2E8AC95197BD61bc) -- MetaMask Delegation Framework caveat enforcer that gates delegations on trust scores
+
 ### Schemas
 - **V1 Review Schema:** [`0x5d6661...70ce30`](https://base-sepolia.easscan.org/schema/view/0x5d6661abb66715bfc01d1744f52f52594c1b01ed473d9facb2825988ef70ce30) -- `address freelancer, string projectName, uint8 rating, string review`
 - **V2 Review Schema:** [`0xb529f1...18f1`](https://base-sepolia.easscan.org/schema/view/0xb529f19655a454738a3be1bbe2c84d69d34b19cb3ca85672b005f27db42418f1) -- Adds `string proofURI` for proof-of-work links
@@ -130,7 +164,7 @@ Everything below is live on Base Sepolia. Click to verify independently.
 ### Sample Attestations
 - **Test review (5-star):** [`0x7bd386...2779`](https://base-sepolia.easscan.org/attestation/view/0x7bd386bab4474368720ae19737fd65d31cc9597cf82bd061192291437c5c2779) -- Manychat Automation
 - **Test review (4-star):** [`0x6956ff...0236`](https://base-sepolia.easscan.org/attestation/view/0x6956ffed6a2c4d02fa0e919dfc49909075e9174a206ea346a9319bcd83740236) -- GHL Automation
-- **Validation attestation:** [`0x08a140...dad0`](https://base-sepolia.easscan.org/attestation/view/0x08a140aad5794147cc2b0d0f40d00e5eac4afb305aee979741aa28b899aadad0) -- TrustAgent validated Bardiel (Agent #20), score 69/100, verdict CAUTIOUS
+- **Validation attestation:** [`0x08a140...dad0`](https://base-sepolia.easscan.org/attestation/view/0x08a140aad5794147cc2b0d0f40d00e5eac4afb305aee979741aa28b899aadad0) -- TrustAgent validated Bardiel (Agent #20), score 69%, verdict CAUTIOUS
 
 ### Demo Data
 - 5 active reviews, 1 revoked, average 4.4/5 stars
@@ -147,9 +181,13 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:3000/` and try:
+- See live on-chain stats on the Home page
 - Search the demo address: `0x12e38f09f8d39Ba1B18Ec2d158cAB0DD92D45eEa`
-- Browse the Agent Registry
-- Validate an agent
+- Browse the Agent Registry (look for trust score badges on validated agents)
+- View an agent profile with multi-dimensional reputation and validation history
+- Validate an agent and see the result recorded on-chain
+- Check TrustAgent's full validation track record on the Activity page
+- Test trust-gated delegation and explore composable caveats on the Delegate page
 
 ### CLI Agent
 
@@ -170,9 +208,19 @@ npm run agent
 | Agent identity | ERC-8004 Identity Registry | On-chain agent passports with metadata |
 | Agent reputation | ERC-8004 Reputation Registry | Feedback and scoring for registered agents |
 | Attestations | EAS (Ethereum Attestation Service) | Permanent on-chain reviews and validation records |
-| Smart contracts | ethers.js v6 | Industry standard for Ethereum interaction |
-| Frontend | React + Vite | 4-page SPA with neon glassmorphism design |
-| Serverless APIs | Vercel Functions | Trust score, agent lookup, and validation endpoints |
+| Trust-gated delegation | MetaMask Delegation Framework | TrustEnforcer caveat enforcer gates delegations on trust scores |
+| Smart contracts | ethers.js v6 + Solidity | TrustEnforcer contract + EAS/ERC-8004 interaction |
+| Frontend | React + Vite | 6-page SPA with neon glassmorphism design |
+| Serverless APIs | Vercel Functions | Trust score, agent lookup, validation, and delegation endpoints |
+
+## ENS Integration
+
+TrustAgent's Search page supports ENS name and Basename resolution. Enter a `.eth` name or `.base.eth` Basename and TrustAgent resolves it to a wallet address for reputation lookup -- no need to know the raw address.
+
+## Future Work
+
+- **ERC-8004 Validation Registry** -- The third ERC-8004 registry (alongside Identity and Reputation) is designed for storing validation results. When a confirmed deployment is available on Base Sepolia, TrustAgent can write validation results to both EAS and the Validation Registry for deeper protocol integration.
+- **ERC-7715 (Wallet Permissions)** -- MetaMask's wallet permissions API would allow TrustAgent to request specific permissions from users via MetaMask Flask, enabling a more integrated wallet experience.
 
 ## Human-Agent Collaboration
 

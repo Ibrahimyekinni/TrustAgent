@@ -111,8 +111,7 @@ export default function TrustScore({ results, erc8004Data }) {
             />
           </svg>
           <div className="trust-ring-label">
-            <span className="trust-ring-number" style={{ color }}>{score}</span>
-            <span className="trust-ring-text">/ 100</span>
+            <span className="trust-ring-number" style={{ color }}>{score}%</span>
           </div>
         </div>
 

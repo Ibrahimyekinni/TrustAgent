@@ -12,6 +12,8 @@ export default function AgentRegistry() {
   const [loadingReputation, setLoadingReputation] = useState(false);
   const [validation, setValidation] = useState(null);
   const [validating, setValidating] = useState(false);
+  const [validationHistory, setValidationHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
@@ -53,6 +55,7 @@ export default function AgentRegistry() {
         const agent = await res.json();
         setSelectedAgent(agent);
         loadReputation(agent.agentId);
+        if (agent.owner) loadValidationHistory(agent.owner);
       } catch {
         setError(`No agent found with ID ${input}`);
       }
@@ -69,6 +72,7 @@ export default function AgentRegistry() {
         if (data.found) {
           setSelectedAgent(data);
           loadReputation(data.agentId);
+          if (data.owner) loadValidationHistory(data.owner);
         } else {
           setError("No registered agent found for this address.");
         }
@@ -96,6 +100,20 @@ export default function AgentRegistry() {
     setLoadingReputation(false);
   }
 
+  async function loadValidationHistory(address) {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/agent-lookup?action=validations&address=${address}`);
+      if (res.ok) {
+        const data = await res.json();
+        setValidationHistory(data.validations || []);
+      }
+    } catch {
+      // Non-critical
+    }
+    setLoadingHistory(false);
+  }
+
   async function handleValidate(agentId) {
     setValidating(true);
     setValidation(null);
@@ -121,13 +139,16 @@ export default function AgentRegistry() {
     setSelectedAgent(agent);
     setAgentReputation(null);
     setValidation(null);
+    setValidationHistory([]);
     loadReputation(agent.agentId);
+    if (agent.owner) loadValidationHistory(agent.owner);
   }
 
   function backToList() {
     setSelectedAgent(null);
     setAgentReputation(null);
     setValidation(null);
+    setValidationHistory([]);
   }
 
   // ── Agent Detail View ──
@@ -221,6 +242,27 @@ export default function AgentRegistry() {
                 </div>
               </div>
 
+              {agentReputation.dimensions && agentReputation.dimensions.length > 0 && (
+                <div className="reputation-dimensions">
+                  <h4>Reputation Dimensions</h4>
+                  <div className="dimension-bars">
+                    {agentReputation.dimensions.map((d) => (
+                      <div key={d.tag} className="dimension-bar-row">
+                        <span className="dimension-tag">{d.tag}</span>
+                        <div className="dimension-bar-track">
+                          <div
+                            className="dimension-bar-fill"
+                            style={{ width: `${Math.min(Math.max((d.avgScore / (Math.max(...agentReputation.dimensions.map(x => Math.abs(x.avgScore))) || 1)) * 100, 5), 100)}%` }}
+                          />
+                        </div>
+                        <span className="dimension-value">{d.avgScore}</span>
+                        <span className="dimension-count">({d.count})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {agentReputation.feedback.length > 0 && (
                 <div className="agent-feedback-list">
                   <h4>Feedback Entries</h4>
@@ -252,6 +294,52 @@ export default function AgentRegistry() {
           )}
         </div>
 
+        {/* Validation History Section */}
+        <div className="validation-history-section">
+          <h3>
+            Validation History
+            {validationHistory.length > 0 && (
+              <span className="validation-history-count">({validationHistory.length})</span>
+            )}
+          </h3>
+
+          {loadingHistory && <Spinner message="Loading past validations..." />}
+
+          {!loadingHistory && validationHistory.length > 0 && (
+            <div className="validation-history-list">
+              {validationHistory.map((v) => (
+                <div key={v.uid} className="validation-history-entry">
+                  <div className={`validation-history-score validation-history-score--${v.verdict.toLowerCase()}`}>
+                    {v.trustScore}%
+                  </div>
+                  <div className="validation-history-details">
+                    <span className={`validation-history-verdict validation-verdict--${v.verdict.toLowerCase()}`}>
+                      {v.verdict}
+                    </span>
+                    <span className="validation-history-date">
+                      {new Date(v.date).toLocaleDateString()} at {new Date(v.date).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <a
+                    href={`https://base-sepolia.easscan.org/attestation/view/${v.uid}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="validation-history-link"
+                  >
+                    View on EASScan
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loadingHistory && validationHistory.length === 0 && (
+            <p className="validation-history-empty">
+              No previous validations. Use the button below to validate this agent for the first time.
+            </p>
+          )}
+        </div>
+
         {/* TrustAgent Validation Section */}
         <div className="validation-section">
           <h3>TrustAgent Validation</h3>
@@ -276,8 +364,7 @@ export default function AgentRegistry() {
             <div className="validation-result">
               <div className="validation-header">
                 <div className="validation-score-circle">
-                  <span className="validation-score-number">{validation.validation.score}</span>
-                  <span className="validation-score-label">/ 100</span>
+                  <span className="validation-score-number">{validation.validation.score}%</span>
                 </div>
                 <div className="validation-verdict-info">
                   <span className={`validation-verdict validation-verdict--${validation.validation.verdict.toLowerCase()}`}>

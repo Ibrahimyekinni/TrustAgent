@@ -139,11 +139,35 @@ export default async function handler(req, res) {
           } catch { /* skip */ }
         }
 
+        // Tag-based dimensional queries
+        const dimensions = [];
+        const uniqueTags = new Set();
+        for (const fb of feedback) {
+          if (fb.tag1 && !fb.revoked) uniqueTags.add(fb.tag1);
+        }
+        if (uniqueTags.size > 0) {
+          const tagPromises = [...uniqueTags].slice(0, 8).map(async (tag) => {
+            try {
+              const tagSummary = await reputation.getSummary(id, clients, tag, "");
+              const tagCount = Number(tagSummary.count);
+              if (tagCount === 0) return null;
+              const tagDecimals = Number(tagSummary.summaryValueDecimals);
+              const tagAvg = Number(tagSummary.summaryValue) / (tagCount * Math.pow(10, tagDecimals));
+              return { tag, count: tagCount, avgScore: Math.round(tagAvg * 100) / 100 };
+            } catch { return null; }
+          });
+          const tagResults = await Promise.all(tagPromises);
+          for (const r of tagResults) {
+            if (r) dimensions.push(r);
+          }
+        }
+
         reputationData = {
           feedbackCount,
           avgScore: Math.round(avgScore * 100) / 100,
           clientCount: clients.length,
           feedback,
+          dimensions,
         };
       }
     } catch { /* no reputation data */ }
@@ -159,6 +183,13 @@ export default async function handler(req, res) {
     if (agentIdentity.supportedTrust && agentIdentity.supportedTrust.length > 0) score += 3;
 
     // Reputation signals
+    const revokedFeedback = reputationData.feedback.filter(f => f.revoked);
+    const activeFeedback = reputationData.feedback.filter(f => !f.revoked);
+    const positiveFeedback = activeFeedback.filter(f => f.value > 0);
+    const positiveRatio = activeFeedback.length > 0
+      ? positiveFeedback.length / activeFeedback.length
+      : 0;
+
     if (reputationData.feedbackCount > 0) {
       if (reputationData.feedbackCount >= 10) score += 12;
       else if (reputationData.feedbackCount >= 5) score += 8;
@@ -168,17 +199,18 @@ export default async function handler(req, res) {
       score -= 10; // No reputation data is a risk factor
     }
 
-    if (reputationData.avgScore > 0) {
-      if (reputationData.avgScore >= 80) score += 8;
-      else if (reputationData.avgScore >= 50) score += 4;
-      else if (reputationData.avgScore < 30) score -= 8;
+    // Sentiment: use positive/negative ratio instead of raw avg
+    // (ERC-8004 feedback values use different scales per tag, so raw avg is unreliable)
+    if (activeFeedback.length > 0) {
+      if (positiveRatio >= 0.9) score += 8;
+      else if (positiveRatio >= 0.7) score += 4;
+      else if (positiveRatio < 0.5) score -= 8;
     }
 
     if (reputationData.clientCount >= 3) score += 5;
     else if (reputationData.clientCount >= 2) score += 3;
 
     // Check for revoked feedback
-    const revokedFeedback = reputationData.feedback.filter(f => f.revoked);
     if (revokedFeedback.length > 0) {
       const revokeRatio = revokedFeedback.length / reputationData.feedback.length;
       if (revokeRatio > 0.3) score -= 10;
@@ -229,11 +261,12 @@ AGENT UNDER EVALUATION:
 
 ERC-8004 REPUTATION DATA:
 - Total Feedback: ${reputationData.feedbackCount}
-- Average Score: ${reputationData.avgScore}
+- Positive Feedback Ratio: ${activeFeedback.length > 0 ? Math.round(positiveRatio * 100) + "%" : "N/A"} (${positiveFeedback.length} positive out of ${activeFeedback.length} active entries)
 - Unique Clients: ${reputationData.clientCount}
 - Revoked Feedback: ${revokedFeedback.length}
+NOTE: ERC-8004 feedback uses different value scales per tag (e.g. quality scores, glicko ratings, win rates). Do NOT compare raw values across tags or treat the numeric average as a 0-100 rating. Focus on the positive/negative ratio and volume instead.
 ${feedbackDetails ? "Feedback Entries:\n" + feedbackDetails : "No feedback entries found."}
-
+${reputationData.dimensions && reputationData.dimensions.length > 0 ? "\nMULTI-DIMENSIONAL REPUTATION (ERC-8004 tag-based):\n" + reputationData.dimensions.map(d => `  - ${d.tag}: avg ${d.avgScore} across ${d.count} entries`).join("\n") + "\nNote: Each dimension uses its own scale. Higher values within the same tag indicate better performance for that metric." : ""}
 COMPUTED TRUST SCORE: ${score}/100
 VERDICT: ${verdict}
 

@@ -2685,6 +2685,52 @@ footer a:hover {
   .cta-btn { width: 100%; max-width: 300px; }
   .live-stats-grid { grid-template-columns: repeat(2, 1fr); }
 
+  /* Activity entries: tighter on large phones */
+  .activity-entry {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+
+  .activity-proof-link {
+    margin-left: auto;
+  }
+
+  /* Validation history: tighter on large phones */
+  .validation-history-entry {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+
+  .validation-history-link {
+    margin-left: auto;
+  }
+
+  .validation-history-section {
+    padding: 1.2rem;
+  }
+
+  /* Dimension bars: reduce fixed widths */
+  .dimension-tag {
+    min-width: 70px;
+    font-size: 0.68rem;
+  }
+
+  .dimension-value {
+    min-width: 32px;
+    font-size: 0.68rem;
+  }
+
+  .dimension-count {
+    font-size: 0.58rem;
+  }
+
+  /* Agent profile meta: handle long addresses */
+  .agent-meta-value {
+    word-break: break-all;
+    font-size: 0.78rem;
+  }
 
   /* Review card header: handle long project names */
   .review-card-header {
@@ -2994,6 +3040,121 @@ footer a:hover {
   .bg-orb--1 { width: 300px; height: 300px; }
   .bg-orb--2 { width: 250px; height: 250px; }
   .bg-orb--3 { width: 180px; height: 180px; }
+
+  /* Live stats: single column on small phones */
+  .live-stats-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Dimension bars: stack tag above bar on small phones */
+  .dimension-bar-row {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .dimension-tag {
+    min-width: unset;
+    width: 100%;
+    text-align: left;
+    font-size: 0.65rem;
+  }
+
+  .dimension-bar-track {
+    flex: 1;
+    min-width: 60%;
+  }
+
+  /* Activity entries: smaller score circles */
+  .activity-score {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 0.72rem;
+  }
+
+  .activity-details-top {
+    gap: 0.3rem;
+  }
+
+  .validation-verdict {
+    font-size: 0.78rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  /* Validation history: smaller circles */
+  .validation-history-score {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 0.72rem;
+  }
+
+  /* Agent profile: tighter padding */
+  .agent-profile-card {
+    padding: 1rem;
+  }
+
+  .agent-profile-meta {
+    gap: 0.6rem;
+  }
+
+  .agent-meta-value {
+    font-size: 0.7rem;
+    word-break: break-all;
+  }
+
+  /* Delegate page: tighter on small phones */
+  .delegate-page {
+    padding: 1rem 0.8rem 2rem;
+  }
+
+  .delegate-flow-card,
+  .delegate-demo-card,
+  .delegate-info-card {
+    padding: 1.2rem;
+  }
+
+  .delegate-composable-card {
+    padding: 1.2rem;
+  }
+
+  .caveat-item {
+    gap: 0.4rem;
+    padding: 0.6rem;
+  }
+
+  .caveat-icon {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    font-size: 0.6rem;
+  }
+
+  .caveat-name {
+    font-size: 0.72rem;
+  }
+
+  .caveat-desc {
+    font-size: 0.6rem;
+  }
+
+  .caveat-badge {
+    font-size: 0.5rem;
+    padding: 0.1rem 0.35rem;
+  }
+
+  /* Delegate score badge: even smaller on tiny screens */
+  .delegate-score-badge {
+    width: 64px;
+    height: 64px;
+  }
+
+  .delegate-score-number {
+    font-size: 1rem;
+  }
+
+  .delegate-score-verdict {
+    font-size: 0.4rem;
+    max-width: 54px;
+  }
 }
 
 /* My Reviews Section (Review page) */
@@ -3823,6 +3984,46 @@ footer a:hover {
   .agent-reputation-summary {
     flex-direction: column;
     gap: 0.8rem;
+  }
+
+  /* Validation history: wrap entries */
+  .validation-history-entry {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.8rem;
+  }
+
+  .validation-history-link {
+    margin-left: auto;
+  }
+
+  .validation-history-section {
+    padding: 1.2rem;
+  }
+
+  /* Dimension bars: reduce tag width */
+  .dimension-tag {
+    min-width: 70px;
+    font-size: 0.7rem;
+  }
+
+  /* Agent meta: break long addresses */
+  .agent-meta-value {
+    word-break: break-all;
+    font-size: 0.8rem;
+  }
+
+  /* Validation section: tighter padding */
+  .validation-section {
+    padding: 1.2rem;
+  }
+
+  .proof-section {
+    padding: 1.2rem;
+  }
+
+  .proof-section p {
+    word-break: break-word;
   }
 }
 
@@ -4695,5 +4896,102 @@ footer a:hover {
   .delegate-result-actions .delegate-btn {
     width: 100%;
     text-align: center;
+  }
+
+  /* Caveat stack: let items wrap gracefully */
+  .caveat-item {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.7rem 0.8rem;
+  }
+
+  .caveat-name {
+    font-size: 0.78rem;
+  }
+
+  .caveat-desc {
+    font-size: 0.65rem;
+  }
+
+  .caveat-badge {
+    margin-left: auto;
+  }
+
+  .caveat-stack {
+    padding: 1rem;
+  }
+
+  .caveat-code {
+    font-size: 0.62rem;
+    padding: 0.8rem;
+  }
+
+  /* Delegate score badge: handle long verdict text */
+  .delegate-score-badge {
+    width: 70px;
+    height: 70px;
+  }
+
+  .delegate-score-number {
+    font-size: 1.1rem;
+  }
+
+  .delegate-score-verdict {
+    font-size: 0.45rem;
+    max-width: 60px;
+    text-align: center;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Activity entries: wrap on mobile */
+  .activity-entry {
+    flex-wrap: wrap;
+    padding: 0.8rem;
+    gap: 0.6rem;
+  }
+
+  .activity-score {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    font-size: 0.78rem;
+  }
+
+  .activity-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-proof-link {
+    margin-left: auto;
+  }
+
+  /* Validation history entries: wrap on mobile */
+  .validation-history-entry {
+    flex-wrap: wrap;
+    padding: 0.8rem;
+    gap: 0.6rem;
+  }
+
+  .validation-history-score {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    font-size: 0.78rem;
+  }
+
+  .validation-history-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .validation-history-link {
+    margin-left: auto;
+  }
+
+  .validation-history-section {
+    padding: 1.2rem;
   }
 }

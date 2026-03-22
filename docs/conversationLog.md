@@ -331,3 +331,61 @@ yungmaster pushed for a major quality upgrade: "this needs to go from demo to pr
 - Agent diagnosed root cause from build logs (`npx vercel inspect --logs`)
 - yungmaster chose code-based fix over dashboard fix, then ended up needing the dashboard fix anyway
 - Alias issue was a recurring pain point across multiple sessions -- finally resolved permanently via Vercel Domains configuration
+
+## March 22, 2026 -- Submission Day
+
+### Key Decisions
+- **Submit to two tracks:** "Agents With Receipts -- ERC-8004" (Protocol Labs, $4K) and "Let the Agent Cook -- No Humans Required" (Protocol Labs, $4K). These are the strongest fits for TrustAgent's architecture. No MetaMask-specific delegation track existed in the catalog.
+- **Register TrustAgent as an AI agent on Moltbook** -- Required for hackathon submission. TrustAgent is now a verified agent on the Moltbook social network.
+- **Intention: continuing** -- TrustAgent is entered in the shared Synthesis x PL_Genesis track. Development continues through March 31.
+
+### What We Did
+
+#### 1. Moltbook Agent Registration & Announcement Post
+- Registered TrustAgent on Moltbook (AI agent social network) via `POST /api/v1/agents/register`
+- yungmaster completed the 3-step claim process: email verification, X/Twitter account connection, verification tweet posted from @yungmaster001
+- Agent passed Moltbook's anti-bot math verification challenge
+- Created announcement post in the `synthesis` submolt describing the project, tracks, repo, and live demo
+- Updated post with full project details via `PATCH` endpoint
+- Profile: `https://www.moltbook.com/u/trustagent`
+- Post: `https://www.moltbook.com/posts/d72e5422-a9ee-4823-b156-c249c3e508bd`
+
+#### 2. Synthesis/Devfolio API Key Recovery
+- Registration attempt revealed yungmaster was already registered (from March 12 setup)
+- API key was lost -- recovered via `POST /reset/request` which sent an email OTP
+- yungmaster provided OTP, new API key issued via `POST /reset/confirm`
+
+#### 3. Project Submission (Full API Flow)
+- Fetched team details via `GET /teams/me` -- confirmed team UUID and admin role
+- Fetched all 20 available tracks via `GET /catalog` -- identified ERC-8004 and Let the Agent Cook as best fits
+- Created draft project via `POST /projects` with all required fields:
+  - Description and problem statement
+  - Public repo URL and deployed URL
+  - Two track assignments
+  - Full 28K-character conversation log
+  - Complete submission metadata: agentHarness (claude-code), model (claude-opus-4-6), skills, tools, helpful resources, Moltbook post URL
+- Self-custody transfer completed:
+  - Initiated via `POST /participants/me/transfer/init` with yungmaster's MetaMask wallet address
+  - Confirmed via `POST /participants/me/transfer/confirm` -- on-chain TX: `0xf02def525311022b8bf6e3a4ca200ea6401b1bad6d9d4912831d46f63e3e10ad`
+- Published project via `POST /projects/:uuid/publish` -- status changed from `draft` to `publish`
+- Project slug: `trustagent-0e98`
+
+### Submission Summary
+| Field | Value |
+|-------|-------|
+| Status | Published |
+| Tracks | Agents With Receipts (ERC-8004), Let the Agent Cook |
+| Agent Harness | claude-code |
+| Model | claude-opus-4-6 |
+| Repo | https://github.com/Ibrahimyekinni/TrustAgent |
+| Live Demo | https://trustagent-app.vercel.app |
+| Moltbook | https://www.moltbook.com/posts/d72e5422-a9ee-4823-b156-c249c3e508bd |
+| Self-Custody | Verified (wallet `0x12e38f...5eEa`) |
+| Conversation Log | 28,502 characters |
+
+### Human-Agent Collaboration Notes
+- yungmaster directed the submission push: "let's patch up the must-haves"
+- Agent handled the entire API flow autonomously: Moltbook registration, key recovery, project creation, self-custody transfer, and publishing
+- yungmaster completed the manual steps: Moltbook claim process (email, X connection, verification tweet) and MetaMask wallet address
+- The entire submission from Moltbook registration to published project took one session
+- Deadline: March 22, 11:59 PM PST (March 23, 8:59 AM WAT)

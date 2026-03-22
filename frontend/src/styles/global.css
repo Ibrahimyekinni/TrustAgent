@@ -4995,3 +4995,103 @@ footer a:hover {
     padding: 1.2rem;
   }
 }
+
+/* ============================================
+   404 Not Found Page
+   ============================================ */
+.not-found-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.not-found-content h2 {
+  font-size: 1.4rem;
+  color: var(--white);
+  margin-bottom: 0.5rem;
+}
+
+.not-found-content p {
+  color: rgba(248, 248, 248, 0.5);
+  font-size: 1rem;
+}
+
+.not-found-code {
+  font-size: 6rem;
+  font-weight: 800;
+  color: var(--neon);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 40px rgba(93, 214, 44, 0.3);
+}
+
+/* ============================================
+   Home Stats Loading / Error
+   ============================================ */
+.live-stat-card--loading {
+  opacity: 0.4;
+  animation: pulse-fade 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-fade {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.5; }
+}
+
+.live-stats-error {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(248, 248, 248, 0.5);
+  font-size: 0.95rem;
+}
+
+.live-stats-error button {
+  margin-top: 0.75rem;
+}
+
+/* ============================================
+   Revoke Confirmation Dialog
+   ============================================ */
+.revoke-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.revoke-confirm-dialog {
+  max-width: 420px;
+  width: 90%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.revoke-confirm-dialog h4 {
+  font-size: 1.2rem;
+  color: var(--white);
+  margin-bottom: 0.75rem;
+}
+
+.revoke-confirm-dialog p {
+  color: rgba(248, 248, 248, 0.6);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.revoke-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.revoke-confirm-actions .cta-btn {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+}

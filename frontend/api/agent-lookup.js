@@ -270,8 +270,8 @@ export default async function handler(req, res) {
     // ── Search by wallet address ──
     if (action === "search" && address) {
       // Scan agent IDs to find one owned by this address
-      const maxScan = 300;
-      const batchSize = 50;
+      const maxScan = 2000;
+      const batchSize = 100;
 
       for (let start = 1; start <= maxScan; start += batchSize) {
         const checks = [];

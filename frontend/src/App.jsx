@@ -6,6 +6,7 @@ import Review from "./pages/Review";
 import AgentRegistry from "./pages/AgentRegistry";
 import Delegate from "./pages/Delegate";
 import Activity from "./pages/Activity";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="activity" element={<Activity />} />
         <Route path="review" element={<Review />} />
         <Route path="delegate" element={<Delegate />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );

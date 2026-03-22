@@ -21,6 +21,9 @@ export default function Review() {
   const [myReviews, setMyReviews] = useState([]); // Reviews submitted by this wallet
   const [loadingMyReviews, setLoadingMyReviews] = useState(false);
   const [revokingUID, setRevokingUID] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [revokeConfirm, setRevokeConfirm] = useState(null); // UID pending confirmation
+  const [revokeSuccess, setRevokeSuccess] = useState("");
 
   // Listen for MetaMask account/chain changes
   useEffect(() => {
@@ -93,13 +96,17 @@ export default function Review() {
     setLoadingMyReviews(false);
   }
 
-  async function handleRevoke(attestationUID) {
+  function handleRevoke(attestationUID) {
     if (!wallet.signer) return;
-    if (!confirm("Are you sure you want to revoke this review? This action is on-chain and costs gas.")) return;
+    setRevokeConfirm(attestationUID);
+  }
 
+  async function confirmRevoke() {
+    const attestationUID = revokeConfirm;
+    setRevokeConfirm(null);
     setRevokingUID(attestationUID);
+    setRevokeSuccess("");
     try {
-      // Determine which schema this attestation uses
       const review = myReviews.find(r => r.uid === attestationUID);
       const schemaId = review?.schemaId || SCHEMA_UID_V2;
 
@@ -113,14 +120,13 @@ export default function Review() {
       });
       await tx.wait();
 
-      // Refresh the reviews list
       if (wallet.address) fetchMyReviews(wallet.address);
-      alert("Review revoked successfully. It will no longer count toward the average rating.");
+      setRevokeSuccess("Review revoked successfully. It will no longer count toward the average rating.");
     } catch (err) {
       if (err.code === "ACTION_REJECTED" || err.code === 4001) {
-        // User cancelled -- no alert needed
+        // User cancelled in wallet -- no message needed
       } else {
-        alert("Revocation failed: " + (err.reason || err.message || err));
+        setFormError("Revocation failed: " + (err.reason || err.message || err));
       }
     }
     setRevokingUID(null);
@@ -128,44 +134,45 @@ export default function Review() {
 
   async function handleConnect() {
     try {
+      setFormError("");
       const { address, signer } = await connectWallet();
       setWallet({ address, signer });
       fetchMyReviews(address);
     } catch (err) {
-      alert(err.message || "Failed to connect wallet");
+      setFormError(err.message || "Failed to connect wallet");
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setFormError("");
 
     if (!wallet.signer) {
-      alert("Please connect your wallet first.");
+      setFormError("Please connect your wallet first.");
       return;
     }
 
     const { freelancerAddress, projectName, rating, reviewText, proofURI } = form;
 
     if (!isValidAddress(freelancerAddress)) {
-      alert("Invalid wallet address.");
+      setFormError("Invalid wallet address.");
       return;
     }
 
-    // Block self-reviews -- you can't review yourself
     if (freelancerAddress.toLowerCase() === wallet.address.toLowerCase()) {
-      alert("You cannot review yourself. Enter a different wallet address.");
+      setFormError("You cannot review yourself. Enter a different wallet address.");
       return;
     }
     if (!projectName.trim()) {
-      alert("Please enter a project name.");
+      setFormError("Please enter a project name.");
       return;
     }
     if (rating < 1 || rating > 5) {
-      alert("Please select a rating (1-5 stars).");
+      setFormError("Please select a rating (1-5 stars).");
       return;
     }
     if (!reviewText.trim()) {
-      alert("Please write a review.");
+      setFormError("Please write a review.");
       return;
     }
 
@@ -254,6 +261,48 @@ export default function Review() {
             {isConnected ? "Connected" : "Connect Wallet"}
           </button>
         </div>
+
+        {/* Inline error banner */}
+        {formError && (
+          <div className="error" style={{ marginBottom: "1rem" }}>
+            <p>{formError}</p>
+            <button
+              className="dismiss-btn"
+              onClick={() => setFormError("")}
+              style={{ marginTop: "0.5rem", background: "none", border: "1px solid rgba(255,100,100,0.3)", color: "#ff6b6b", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Revoke success banner */}
+        {revokeSuccess && (
+          <div className="tx-success" style={{ marginBottom: "1rem" }}>
+            <p>{revokeSuccess}</p>
+            <button
+              className="dismiss-btn"
+              onClick={() => setRevokeSuccess("")}
+              style={{ marginTop: "0.5rem", background: "none", border: "1px solid rgba(93,214,44,0.3)", color: "var(--neon)", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Revoke confirmation dialog */}
+        {revokeConfirm && (
+          <div className="revoke-confirm-overlay">
+            <div className="revoke-confirm-dialog glass-card">
+              <h4>Revoke Review?</h4>
+              <p>This action is on-chain and costs gas. The review will no longer count toward the average rating.</p>
+              <div className="revoke-confirm-actions">
+                <button className="cta-btn cta-btn--primary" onClick={confirmRevoke}>Yes, Revoke</button>
+                <button className="cta-btn cta-btn--secondary" onClick={() => setRevokeConfirm(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Review Form */}
         <form className="review-form" onSubmit={handleSubmit}>

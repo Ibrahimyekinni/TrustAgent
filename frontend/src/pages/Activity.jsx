@@ -144,7 +144,7 @@ export default function Activity() {
                     <span className={`validation-verdict validation-verdict--${v.verdict.toLowerCase()}`}>
                       {v.verdict}
                     </span>
-                    <Link to={`/agents`} className="activity-agent-link">
+                    <Link to={`/agents?id=${v.agentId}`} className="activity-agent-link">
                       Agent #{v.agentId}
                     </Link>
                     {v.revoked && <span className="activity-revoked-badge">REVOKED</span>}

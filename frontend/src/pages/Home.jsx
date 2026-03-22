@@ -3,13 +3,19 @@ import { Link } from "react-router-dom";
 
 export default function Home() {
   const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(false);
 
-  useEffect(() => {
+  function fetchStats() {
+    setStatsLoading(true);
+    setStatsError(false);
     fetch("/api/agent-lookup?action=stats")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setStats(data); })
-      .catch(() => {});
-  }, []);
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((data) => { setStats(data); setStatsLoading(false); })
+      .catch(() => { setStatsError(true); setStatsLoading(false); });
+  }
+
+  useEffect(() => { fetchStats(); }, []);
 
   return (
     <div className="home-page">
@@ -36,29 +42,47 @@ export default function Home() {
       </section>
 
       {/* Live Stats */}
-      {stats && (
-        <section className="live-stats-section">
+      <section className="live-stats-section">
+        {statsLoading && !stats && (
           <div className="live-stats-grid">
-            <div className="live-stat-card glass-card">
-              <span className="live-stat-number">{stats.totalReviews}</span>
-              <span className="live-stat-label">On-Chain Reviews</span>
-            </div>
-            <div className="live-stat-card glass-card">
-              <span className="live-stat-number">{stats.totalValidations}</span>
-              <span className="live-stat-label">Agents Validated</span>
-            </div>
-            <div className="live-stat-card glass-card">
-              <span className="live-stat-number">{stats.uniqueEntities}</span>
-              <span className="live-stat-label">Unique Entities</span>
-            </div>
-            <div className="live-stat-card glass-card">
-              <span className="live-stat-number">{stats.totalAttestations}</span>
-              <span className="live-stat-label">Trust Attestations</span>
-            </div>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="live-stat-card glass-card live-stat-card--loading">
+                <span className="live-stat-number">--</span>
+                <span className="live-stat-label">Loading...</span>
+              </div>
+            ))}
           </div>
-          <p className="live-stats-note">Live data from Base Sepolia blockchain</p>
-        </section>
-      )}
+        )}
+        {statsError && !stats && (
+          <div className="live-stats-error">
+            <p>Could not load live stats.</p>
+            <button className="cta-btn cta-btn--secondary" onClick={fetchStats}>Retry</button>
+          </div>
+        )}
+        {stats && (
+          <>
+            <div className="live-stats-grid">
+              <div className="live-stat-card glass-card">
+                <span className="live-stat-number">{stats.totalReviews}</span>
+                <span className="live-stat-label">On-Chain Reviews</span>
+              </div>
+              <div className="live-stat-card glass-card">
+                <span className="live-stat-number">{stats.totalValidations}</span>
+                <span className="live-stat-label">Agents Validated</span>
+              </div>
+              <div className="live-stat-card glass-card">
+                <span className="live-stat-number">{stats.uniqueEntities}</span>
+                <span className="live-stat-label">Unique Entities</span>
+              </div>
+              <div className="live-stat-card glass-card">
+                <span className="live-stat-number">{stats.totalAttestations}</span>
+                <span className="live-stat-label">Trust Attestations</span>
+              </div>
+            </div>
+            <p className="live-stats-note">Live data from Base Sepolia blockchain</p>
+          </>
+        )}
+      </section>
 
       {/* Problem */}
       <section className="problem-section">

@@ -300,13 +300,20 @@ export default function Delegate() {
           </div>
         )}
 
-        {/* No attestation warning */}
+        {/* No attestation warning -- with recovery button */}
         {step === 2 && validation && !validation.attestation?.attestationUID && (
           <div className="delegate-error">
             <p>
               On-chain attestation could not be created. The delegation test requires a valid
-              EAS attestation UID. Try validating the agent again.
+              EAS attestation UID.
             </p>
+            <button
+              className="delegate-btn delegate-btn--secondary"
+              onClick={() => { setStep(0); setValidation(null); }}
+              style={{ marginTop: "0.75rem" }}
+            >
+              Try Again
+            </button>
           </div>
         )}
       </div>

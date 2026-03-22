@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import AgentCard from "../components/AgentCard";
 import Spinner from "../components/Spinner";
 
 export default function AgentRegistry() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,9 +19,30 @@ export default function AgentRegistry() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  // Browse agents on load
+  // Browse agents on load, or deep-link to a specific agent via ?id=X
   useEffect(() => {
-    loadAgents(1);
+    const deepLinkId = searchParams.get("id");
+    if (deepLinkId && /^\d+$/.test(deepLinkId)) {
+      // Deep-link: load specific agent by ID
+      setLoading(true);
+      fetch(`/api/agent-lookup?action=identity&agentId=${deepLinkId}`)
+        .then((r) => { if (!r.ok) throw new Error("Not found"); return r.json(); })
+        .then((agent) => {
+          setSelectedAgent(agent);
+          loadReputation(agent.agentId);
+          if (agent.owner) loadValidationHistory(agent.owner);
+          setLoading(false);
+        })
+        .catch(() => {
+          setError(`No agent found with ID ${deepLinkId}`);
+          setLoading(false);
+          loadAgents(1);
+        });
+      // Clear the query param so back button works cleanly
+      setSearchParams({}, { replace: true });
+    } else {
+      loadAgents(1);
+    }
   }, []);
 
   async function loadAgents(pageNum) {

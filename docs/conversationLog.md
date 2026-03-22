@@ -194,3 +194,140 @@ Process documentation of human-agent collaboration for TrustAgent.
 - Agent registration + autonomous validation was the "wow factor" upgrade -- TrustAgent went from a consumer of the ecosystem to a participant
 - yungmaster reviewed the Bardiel agent screenshot and asked about competition -- agent clarified that Bardiel is a fellow ecosystem participant, not a competitor
 - Full ERC-8004 education session: agent explained the standard's three registries, anti-spam mechanisms, and how TrustAgent fits as a validation layer
+
+## March 15, 2026 -- Day 5 Build (README Update)
+
+### What We Did
+- **Updated README** to reflect the agent trust protocol pivot. Rewrote problem statement, solution description, features, architecture diagram, tech stack, and on-chain artifacts to center the agent-to-agent trust narrative instead of freelancer reputation.
+- README now accurately describes TrustAgent as Agent #1886 that autonomously validates other agents.
+
+## March 19, 2026 -- Days 6-7 Build (Major Hardening Sprint)
+
+### Context
+yungmaster pushed for a major quality upgrade: "this needs to go from demo to product." Agent created a detailed 7-step hardening plan targeting three bounties: Open Track ($20K), Protocol Labs/ERC-8004 ($8K), and MetaMask Delegations ($5K). The plan was based on deep research into what judges would look for and what gaps existed in the current app.
+
+### Key Decisions
+- **Build a TrustEnforcer smart contract** -- A custom caveat enforcer for the MetaMask Delegation Framework that reads EAS attestations on-chain and gates delegations on trust scores. This was the centerpiece for the MetaMask bounty.
+- **Add an Activity page** -- TrustAgent validates agents and records results on-chain, but there was no way to see its track record. Judges need to see the validator's history.
+- **Pull live stats onto the Home page** -- The landing page was 100% static. Judges land here first and see no evidence the system is real.
+- **Show validation badges on agent cards** -- Browsing the Agent Registry, every card looked the same. No indication of which agents had been validated.
+- **Add validation history to agent profiles** -- When you validate an agent, the result showed once and disappeared on navigation. No record of past validations in the UI despite them being permanent on-chain.
+- **Use ERC-8004 tag-based reputation queries** -- The Reputation Registry supports multi-dimensional queries via tag1/tag2 params in `getSummary()`, but TrustAgent was passing empty strings. Using tags = differentiator for the Protocol Labs bounty.
+- **Add composable caveats visualization to the Delegate page** -- MetaMask bounty explicitly wants composability. Show TrustEnforcer stacked with other framework enforcers.
+
+### What We Built
+
+#### 1. TrustEnforcer Smart Contract (`contracts/TrustEnforcer.sol`)
+- Custom caveat enforcer implementing `ICaveatEnforcer` from the MetaMask Delegation Framework
+- Reads EAS attestations on-chain via the EAS contract at `0x4200000000000000000000000000000000000021`
+- Validates: correct schema UID, trusted attester (TrustAgent wallet), attestation not revoked, trust score >= minimum threshold
+- Decodes ABI-encoded attestation data to extract trust score
+- Deployed to Base Sepolia: `0x3Fc881e22190B672d4B9621e2E8AC95197BD61bc`
+
+#### 2. Delegate Page (`frontend/src/pages/Delegate.jsx`)
+- Full trust-gated delegation demo with a 2-step flow: validate agent first, then test delegation with adjustable threshold
+- Score slider lets judges test "approved" vs "blocked" scenarios in real time
+- On-chain proof links for every step (TrustEnforcer contract, EAS attestation, schema)
+- "How It Works" flow diagram explaining the 3-step process
+- **Composable Caveats section** -- Visual diagram showing TrustEnforcer stacked with TimestampEnforcer, LimitedCallsEnforcer, and AllowedTargetsEnforcer. Includes a code example of a production delegation struct with multiple caveats. Explains that DelegationManager validates ALL caveats before executing.
+- "About TrustEnforcer" info card with contract address, network, and framework details
+
+#### 3. Delegation Demo API (`frontend/api/delegation-demo.js`)
+- Serverless endpoint that simulates the TrustEnforcer's on-chain logic
+- Reads the EAS attestation, decodes the trust score, checks against the minimum threshold
+- Returns approved/blocked result with full proof links
+
+#### 4. Activity Page (`frontend/src/pages/Activity.jsx`)
+- Queries EAS GraphQL for ALL validation attestations created by TrustAgent's wallet
+- Summary stats at top: total agents validated, average trust score, verdict distribution
+- Full list of every validation: agent ID, trust score, verdict, date, EASScan link
+- Client-side ABI decoding of attestation data
+- Added to navbar and router
+
+#### 5. Live Stats on Home Page
+- Stats section between hero and problem statement
+- Four glass-card stat boxes: "On-Chain Reviews", "Agents Validated", "Unique Entities", "Trust Attestations"
+- Fetched on mount via new `action=stats` in agent-lookup API
+- Server-side caching (`s-maxage=120`) so Vercel doesn't hit EAS on every page load
+- Gracefully hides if fetch fails (doesn't break the page)
+
+#### 6. Validation Badges on Agent Cards
+- Agent cards in the registry now show a colored score badge for validated agents
+- Badge shows the trust score percentage, colored by verdict (green/yellow/orange/red)
+- Validation data fetched alongside agent browse results via batch EAS query
+- Cards without validations remain clean (no badge)
+
+#### 7. Validation History on Agent Profiles
+- "Validation History" section below the validate button on agent profiles
+- Shows all past TrustAgent validations for that agent: date, score badge, verdict, EASScan link
+- Count displayed in section header (e.g., "Validation History (3)")
+- Fetched via new `action=validations` in agent-lookup API
+
+#### 8. Multi-Dimensional Reputation (ERC-8004 Tag-Based)
+- Agent-lookup API now queries `getSummary()` with individual tags: quality, speed, reliability, communication
+- Only includes dimensions where `count > 0`
+- Agent profiles show horizontal bars for each dimension with tag name, score, and count
+- Dimensional data also fed into the AI validation prompt for richer analysis
+- Fixed trust score engine to use positive/negative feedback ratio instead of mixed-scale avgScore
+
+#### 9. 1200+ Lines of CSS
+- Full styling for all new features: Delegate page, Activity page, composable caveats, validation history, dimension bars, live stats, validation badges
+- Consistent glassmorphism treatment across all new components
+- Entrance animations, hover states, responsive breakpoints
+
+### On-Chain Artifacts Created
+- TrustEnforcer deployed: `0x3Fc881e22190B672d4B9621e2E8AC95197BD61bc`
+- Delegation demo endpoint exercising real EAS attestation reads
+
+### Human-Agent Collaboration Notes
+- yungmaster drove the strategic decision to harden the app for competition. His instinct: "this needs to look like a product, not a hackathon demo"
+- Agent created a comprehensive 7-step plan with research findings driving each decision (e.g., "most projects skip tag-based queries" informed the ERC-8004 dimension work)
+- yungmaster chose what NOT to build: Validation Registry integration (no confirmed deployment), ERC-7715 (requires Flask), time-weighted scoring (invisible to judges)
+- The hardening sprint added ~2700 lines of code across 20 files in a single session
+
+## March 19, 2026 -- Days 6-7 Build (Bug Fixes & Mobile Polish)
+
+### Key Decisions
+- **Fix agent card badge overlap** -- Validation score badges were overlapping with the ACTIVE/INACTIVE status pills on agent cards. After trying two approaches (inline flex container, then absolute positioning), absolute positioning outside the card corner won.
+- **Full mobile responsive audit** -- yungmaster spotted 4 mobile issues and demanded a complete audit. Agent found ~30 potential responsive issues across all pages and fixed them systematically.
+
+### What We Fixed
+
+#### Agent Card Badge Positioning
+- First attempt: moved badge and status into shared flex container -- looked wrong
+- Final approach: badge as absolute-positioned circle floating outside card corner (top:-12px, right:-12px) with card overflow:visible
+- Clean separation between the validation badge and the status pill
+
+#### Mobile Responsive Issues (4 reported + audit findings)
+1. **Caveat stack items overlapping** (Delegate page) -- flex items didn't wrap on narrow screens
+2. **Score badge "INSUFFICIENT_DATA" text overflowing** 80px circle (Delegate Try It) -- constrained text width, reduced font size, added ellipsis
+3. **EASScan link getting cut off** (Activity page) -- flex row didn't wrap
+4. **"View on EASScan" link cut off** (Validation History) -- flex row didn't wrap
+
+#### Comprehensive audit fixes at three breakpoints:
+- **768px** -- Caveat stack, delegate score badge, activity entries, validation history entries all get `flex-wrap: wrap` and reduced sizing
+- **600px** -- Dimension bars, agent meta values (long addresses get `word-break: break-all`), activity/validation entries tighter
+- **480px** -- Live stats grid goes 2-column, dimension bars stack tag above bar, activity/validation score circles shrink, delegate page tighter padding, caveat icons and badges reduced
+
+### Human-Agent Collaboration Notes
+- yungmaster caught the mobile issues by testing on his own phone and circled the exact problems in screenshots -- clear, specific feedback that made fixing fast
+- Agent ran a comprehensive audit via an Explore subagent that identified ~30 issues organized by severity
+- 298 lines of responsive CSS added across three breakpoint levels
+- Verified build passes after each change
+
+## March 19-22, 2026 -- Deployment & DevOps
+
+### Key Decisions
+- **Fix Vercel auto-deploy** -- Deployments were failing because Vercel was running `vite build` from the repo root instead of the `frontend/` directory. Root Directory was set to `frontend` in Vercel dashboard.
+- **Fix alias auto-update** -- `trustagent-app.vercel.app` wasn't auto-updating because it wasn't configured as a production domain. Fixed by adding it in the Vercel Domains tab.
+
+### Issues Resolved
+1. **`vite: command not found` on Vercel** -- Vercel cloned the entire repo and ran `vite build` from root where vite wasn't installed. Fix: set Root Directory to `frontend` in Vercel project settings.
+2. **Stale alias after deploys** -- `trustagent-app.vercel.app` kept pointing to old deployments. Required manual `npx vercel alias` after every push. Fix: configured domain as production domain in Vercel Domains tab. Auto-deploys now update the alias automatically.
+3. **Multiple manual deploys** -- Before auto-deploy worked, deploys were done via `npx vercel --prod` from CLI. After fixes, Git push to `main` triggers auto-deploy + alias update.
+
+### Human-Agent Collaboration Notes
+- yungmaster noticed the Vercel error emails piling up and flagged it
+- Agent diagnosed root cause from build logs (`npx vercel inspect --logs`)
+- yungmaster chose code-based fix over dashboard fix, then ended up needing the dashboard fix anyway
+- Alias issue was a recurring pain point across multiple sessions -- finally resolved permanently via Vercel Domains configuration

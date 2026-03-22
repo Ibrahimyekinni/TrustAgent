@@ -64,7 +64,7 @@ export default function TrustScore({ results, erc8004Data }) {
         setError(true);
         setLoading(false);
       });
-  }, [results]);
+  }, [results, erc8004Data]);
 
   if (!results || results.activeCount === 0) return null;
 

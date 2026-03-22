@@ -192,7 +192,7 @@ export default function Delegate() {
                   <a
                     href={validation.attestation.easScanUrl}
                     target="_blank"
-                    rel="noopener"
+                    rel="noopener noreferrer"
                     className="delegate-proof-link"
                   >
                     View attestation on EASScan
@@ -269,13 +269,13 @@ export default function Delegate() {
               <div className="delegate-proof-section">
                 <h4>On-Chain Proof</h4>
                 <div className="delegate-proof-links">
-                  <a href={delegationResult.proof.enforcerBaseScan} target="_blank" rel="noopener">
+                  <a href={delegationResult.proof.enforcerBaseScan} target="_blank" rel="noopener noreferrer">
                     TrustEnforcer Contract
                   </a>
-                  <a href={delegationResult.proof.attestationEASScan} target="_blank" rel="noopener">
+                  <a href={delegationResult.proof.attestationEASScan} target="_blank" rel="noopener noreferrer">
                     EAS Attestation
                   </a>
-                  <a href={delegationResult.proof.schemaEASScan} target="_blank" rel="noopener">
+                  <a href={delegationResult.proof.schemaEASScan} target="_blank" rel="noopener noreferrer">
                     Validation Schema
                   </a>
                 </div>
@@ -332,7 +332,7 @@ export default function Delegate() {
             <a
               href={`https://sepolia.basescan.org/address/${TRUST_ENFORCER_ADDRESS}`}
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
               className="delegate-info-value delegate-info-value--link"
             >
               {TRUST_ENFORCER_ADDRESS}

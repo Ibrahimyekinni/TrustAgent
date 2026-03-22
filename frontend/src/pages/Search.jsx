@@ -255,7 +255,7 @@ export default function Search() {
             <h4>Blockchain Verification</h4>
             <p>
               All reviews are stored as EAS attestations on{" "}
-              <a href="https://base-sepolia.easscan.org" target="_blank" rel="noopener">
+              <a href="https://base-sepolia.easscan.org" target="_blank" rel="noopener noreferrer">
                 Base Sepolia
               </a>
               . Each review can be independently verified -- click "Verify" on any

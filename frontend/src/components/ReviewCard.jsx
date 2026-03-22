@@ -25,14 +25,14 @@ export default function ReviewCard({ review, onRevoke, revoking }) {
         <span>By: {reviewer.slice(0, 10)}... | {date}</span>
         <span className="review-links">
           {proofURI && (
-            <a href={proofURI} target="_blank" rel="noopener" className="proof-link">
+            <a href={proofURI} target="_blank" rel="noopener noreferrer" className="proof-link">
               Proof of work
             </a>
           )}
           <a
             href={`https://base-sepolia.easscan.org/attestation/view/${uid}`}
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             className="onchain-link"
             title="Verify this review independently on the blockchain"
           >

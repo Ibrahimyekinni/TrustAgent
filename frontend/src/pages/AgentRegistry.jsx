@@ -346,7 +346,7 @@ export default function AgentRegistry() {
                   <a
                     href={`https://base-sepolia.easscan.org/attestation/view/${v.uid}`}
                     target="_blank"
-                    rel="noopener"
+                    rel="noopener noreferrer"
                     className="validation-history-link"
                   >
                     View on EASScan
@@ -442,11 +442,11 @@ export default function AgentRegistry() {
                   <p>This validation result has been permanently recorded on Base as an EAS attestation.</p>
                   <div className="validation-links">
                     {validation.attestation.easScanUrl && (
-                      <a href={validation.attestation.easScanUrl} target="_blank" rel="noopener">
+                      <a href={validation.attestation.easScanUrl} target="_blank" rel="noopener noreferrer">
                         View on EASScan
                       </a>
                     )}
-                    <a href={validation.attestation.baseScanUrl} target="_blank" rel="noopener">
+                    <a href={validation.attestation.baseScanUrl} target="_blank" rel="noopener noreferrer">
                       View Transaction
                     </a>
                   </div>
@@ -479,7 +479,7 @@ export default function AgentRegistry() {
             <a
               href={`https://sepolia.basescan.org/address/${selectedAgent.owner}`}
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
             >
               Base Sepolia
             </a>
@@ -487,7 +487,7 @@ export default function AgentRegistry() {
             <a
               href={`https://sepolia.basescan.org/address/0x8004A818BFB912233c491871b3d84c89A494BD9e`}
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
             >
               Identity Registry
             </a>
@@ -495,7 +495,7 @@ export default function AgentRegistry() {
             <a
               href={`https://sepolia.basescan.org/address/0x8004B663056A597Dffe9eCcC1965A193B7388713`}
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
             >
               Reputation Registry
             </a>

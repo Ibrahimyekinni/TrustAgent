@@ -159,7 +159,7 @@ export default function Activity() {
                 <a
                   href={`https://base-sepolia.easscan.org/attestation/view/${v.uid}`}
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   className="activity-proof-link"
                 >
                   EASScan

@@ -395,7 +395,7 @@ export default function Review() {
               <a
                 href={`https://base-sepolia.easscan.org/attestation/view/${txResult.attestationUID}`}
                 target="_blank"
-                rel="noopener"
+                rel="noopener noreferrer"
               >
                 View on EASScan
               </a>
@@ -403,7 +403,7 @@ export default function Review() {
               <a
                 href={`https://sepolia.basescan.org/tx/${txResult.txHash}`}
                 target="_blank"
-                rel="noopener"
+                rel="noopener noreferrer"
               >
                 View transaction
               </a>

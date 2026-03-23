@@ -2106,7 +2106,7 @@ main {
 }
 
 .star-empty {
-  color: rgba(248, 248, 248, 0.1);
+  color: rgba(248, 248, 248, 0.25);
 }
 
 /* ---- Results stagger ---- */

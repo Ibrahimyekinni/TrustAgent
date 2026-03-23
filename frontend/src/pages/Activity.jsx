@@ -136,13 +136,13 @@ export default function Activity() {
           <div className="activity-list">
             {validations.map((v) => (
               <div key={v.uid} className={`activity-entry ${v.revoked ? "activity-entry--revoked" : ""}`}>
-                <div className={`activity-score activity-score--${v.verdict.toLowerCase()}`}>
+                <div className={`activity-score${v.verdict ? ` activity-score--${v.verdict.toLowerCase()}` : ""}`}>
                   {v.trustScore}%
                 </div>
                 <div className="activity-details">
                   <div className="activity-details-top">
-                    <span className={`validation-verdict validation-verdict--${v.verdict.toLowerCase()}`}>
-                      {v.verdict}
+                    <span className={`validation-verdict${v.verdict ? ` validation-verdict--${v.verdict.toLowerCase()}` : ""}`}>
+                      {v.verdict || "UNKNOWN"}
                     </span>
                     <Link to={`/agents?id=${v.agentId}`} className="activity-agent-link">
                       Agent #{v.agentId}

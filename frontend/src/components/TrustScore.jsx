@@ -36,6 +36,7 @@ export default function TrustScore({ results, erc8004Data }) {
   useEffect(() => {
     if (!results || results.activeCount === 0) return;
 
+    const controller = new AbortController();
     setLoading(true);
     setError(false);
     setAnalysis(null);
@@ -51,6 +52,7 @@ export default function TrustScore({ results, erc8004Data }) {
         address: results.address,
         erc8004Data: erc8004Data || undefined,
       }),
+      signal: controller.signal,
     })
       .then((res) => {
         if (!res.ok) throw new Error("Failed");
@@ -60,10 +62,13 @@ export default function TrustScore({ results, erc8004Data }) {
         setAnalysis(data);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err.name === "AbortError") return;
         setError(true);
         setLoading(false);
       });
+
+    return () => controller.abort();
   }, [results, erc8004Data]);
 
   if (!results || results.activeCount === 0) return null;

@@ -211,7 +211,7 @@ export default async function handler(req, res) {
     else if (reputationData.clientCount >= 2) score += 3;
 
     // Check for revoked feedback
-    if (revokedFeedback.length > 0) {
+    if (revokedFeedback.length > 0 && reputationData.feedback.length > 0) {
       const revokeRatio = revokedFeedback.length / reputationData.feedback.length;
       if (revokeRatio > 0.3) score -= 10;
       else score -= 3;
